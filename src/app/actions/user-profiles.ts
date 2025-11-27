@@ -17,7 +17,10 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
     .single();
 
   if (error) {
-    console.error("Error fetching user profile:", error);
+    // Don't log error if table doesn't exist (expected during setup)
+    if (!error.message?.includes("does not exist")) {
+      console.error("Error fetching user profile:", error);
+    }
     return null;
   }
 
