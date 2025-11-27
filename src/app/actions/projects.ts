@@ -1,11 +1,11 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { Project } from "@/types/database";
 
 export async function getProjects(clientId?: string) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseClient();
 
   let query = supabase
     .from("projects")
@@ -19,6 +19,7 @@ export async function getProjects(clientId?: string) {
   const { data, error } = await query;
 
   if (error) {
+    console.error("Error fetching projects:", error);
     throw new Error(error.message);
   }
 
@@ -26,7 +27,7 @@ export async function getProjects(clientId?: string) {
 }
 
 export async function getProject(id: string) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseClient();
   const { data, error } = await supabase
     .from("projects")
     .select("*, client:clients(*)")
@@ -47,7 +48,7 @@ export async function createProject(formData: {
   deliverables?: string;
   timeline?: string;
 }) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseClient();
 
   const { data, error } = await supabase
     .from("projects")
@@ -64,6 +65,7 @@ export async function createProject(formData: {
     .single();
 
   if (error) {
+    console.error("Error creating project:", error);
     throw new Error(error.message);
   }
 
@@ -82,7 +84,7 @@ export async function updateProject(
     timeline?: string;
   }
 ) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseClient();
 
   const { data, error } = await supabase
     .from("projects")
@@ -108,7 +110,7 @@ export async function updateProject(
 }
 
 export async function deleteProject(id: string) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseClient();
 
   const { error } = await supabase.from("projects").delete().eq("id", id);
 
