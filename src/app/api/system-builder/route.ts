@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { createClient as createSupabaseClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 
 const systemPrompt = `You are an expert automation system architect. When given a business process or problem description, you will design a comprehensive automation system.
 
@@ -53,6 +53,14 @@ Make your designs practical, detailed, and implementable. Focus on:
 
 IMPORTANT: Your response must be ONLY the JSON object, no additional text or markdown formatting.`;
 
+// Create a simple Supabase client for API routes
+function getSupabaseClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE!
+  );
+}
+
 export async function POST(request: NextRequest) {
   let buildId: string | null = null;
 
@@ -75,9 +83,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const supabase = getSupabaseClient();
+
     // Update status to processing
     if (buildId) {
-      const supabase = await createSupabaseClient();
       await supabase
         .from("system_builds")
         .update({ status: "processing" })
@@ -138,7 +147,6 @@ export async function POST(request: NextRequest) {
 
     // Update the system build with results
     if (buildId) {
-      const supabase = await createSupabaseClient();
       await supabase
         .from("system_builds")
         .update({
@@ -156,7 +164,7 @@ export async function POST(request: NextRequest) {
     // Update status to failed if we have a buildId
     if (buildId) {
       try {
-        const supabase = await createSupabaseClient();
+        const supabase = getSupabaseClient();
         await supabase
           .from("system_builds")
           .update({
@@ -169,8 +177,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to generate system design. Check your ANTHROPIC_API_KEY." },
+      { error: `Failed to generate system design: ${errorMessage}` },
       { status: 500 }
     );
   }
