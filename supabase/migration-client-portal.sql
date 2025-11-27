@@ -1,6 +1,15 @@
 -- CoreOS Hub - Client Portal Migration
 -- Run this SQL in your Supabase SQL Editor to add client portal features
 
+-- Create the updated_at trigger function (if it doesn't exist)
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- User Profiles Table (extends Supabase auth.users)
 CREATE TABLE IF NOT EXISTS user_profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
