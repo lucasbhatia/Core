@@ -41,10 +41,14 @@ import {
   Trash2,
   Eye,
   Workflow,
-  Bot,
-  FileText,
-  Timer,
-  Wrench,
+  Code,
+  Mail,
+  ListChecks,
+  MessageSquare,
+  Copy,
+  Check,
+  Download,
+  Zap,
 } from "lucide-react";
 import { createSystemBuild, deleteSystemBuild } from "@/app/actions/system-builds";
 import { useToast } from "@/components/ui/use-toast";
@@ -344,196 +348,406 @@ export function SystemBuilderClient({ initialBuilds }: SystemBuilderClientProps)
   );
 }
 
+function CopyButton({ text, label }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Button variant="outline" size="sm" onClick={handleCopy} className="gap-2">
+      {copied ? (
+        <>
+          <Check className="h-4 w-4 text-green-500" />
+          Copied!
+        </>
+      ) : (
+        <>
+          <Copy className="h-4 w-4" />
+          {label || "Copy"}
+        </>
+      )}
+    </Button>
+  );
+}
+
+function DownloadButton({ content, filename, label }: { content: string; filename: string; label?: string }) {
+  const handleDownload = () => {
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <Button variant="outline" size="sm" onClick={handleDownload} className="gap-2">
+      <Download className="h-4 w-4" />
+      {label || "Download"}
+    </Button>
+  );
+}
+
 function SystemBuildResultView({ result }: { result: SystemBuildResult }) {
   return (
-    <Tabs defaultValue="diagram" className="w-full">
-      <TabsList className="grid w-full grid-cols-6">
-        <TabsTrigger value="diagram">Diagram</TabsTrigger>
-        <TabsTrigger value="workflow">Workflow</TabsTrigger>
-        <TabsTrigger value="agents">Agents</TabsTrigger>
-        <TabsTrigger value="sop">SOP</TabsTrigger>
-        <TabsTrigger value="timeline">Timeline</TabsTrigger>
-        <TabsTrigger value="resources">Resources</TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="diagram" className="mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Workflow className="h-5 w-5" />
-              System Architecture
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="whitespace-pre-wrap font-mono text-sm bg-muted p-4 rounded-lg overflow-x-auto">
-              {result.systemDiagram}
-            </pre>
+    <div className="space-y-4">
+      {/* Overview */}
+      {result.systemOverview && (
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="pt-4">
+            <p className="text-sm">{result.systemOverview}</p>
           </CardContent>
         </Card>
-      </TabsContent>
+      )}
 
-      <TabsContent value="workflow" className="mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Workflow className="h-5 w-5" />
-              Workflow Steps
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {result.workflowSteps.map((step, index) => (
-                <div
-                  key={step.id || index}
-                  className="flex gap-4 p-4 rounded-lg border"
-                >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
-                    {step.id || index + 1}
+      <Tabs defaultValue="prompts" className="w-full">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="prompts" className="gap-1">
+            <MessageSquare className="h-3 w-3" />
+            <span className="hidden sm:inline">Prompts</span>
+          </TabsTrigger>
+          <TabsTrigger value="workflow" className="gap-1">
+            <Workflow className="h-3 w-3" />
+            <span className="hidden sm:inline">Workflow</span>
+          </TabsTrigger>
+          <TabsTrigger value="code" className="gap-1">
+            <Code className="h-3 w-3" />
+            <span className="hidden sm:inline">Code</span>
+          </TabsTrigger>
+          <TabsTrigger value="emails" className="gap-1">
+            <Mail className="h-3 w-3" />
+            <span className="hidden sm:inline">Emails</span>
+          </TabsTrigger>
+          <TabsTrigger value="api" className="gap-1">
+            <Zap className="h-3 w-3" />
+            <span className="hidden sm:inline">API</span>
+          </TabsTrigger>
+          <TabsTrigger value="checklist" className="gap-1">
+            <ListChecks className="h-3 w-3" />
+            <span className="hidden sm:inline">Checklist</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* AI Prompts Tab */}
+        <TabsContent value="prompts" className="mt-4 space-y-4">
+          {result.aiPrompts && result.aiPrompts.length > 0 ? (
+            result.aiPrompts.map((prompt, index) => (
+              <Card key={index}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-base">{prompt.name}</CardTitle>
+                      <CardDescription>{prompt.purpose}</CardDescription>
+                    </div>
+                    <CopyButton text={prompt.prompt} label="Copy Prompt" />
                   </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold">{step.title}</h4>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {step.description}
-                    </p>
-                    {step.tools && step.tools.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {step.tools.map((tool, i) => (
-                          <Badge key={i} variant="secondary">
-                            {tool}
-                          </Badge>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">PROMPT (Ready to use with ChatGPT/Claude)</Label>
+                    <pre className="mt-1 whitespace-pre-wrap font-mono text-sm bg-muted p-3 rounded-lg max-h-48 overflow-y-auto">
+                      {prompt.prompt}
+                    </pre>
+                  </div>
+                  {prompt.variables && prompt.variables.length > 0 && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">VARIABLES TO REPLACE</Label>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {prompt.variables.map((v, i) => (
+                          <Badge key={i} variant="secondary">{`{{${v}}}`}</Badge>
                         ))}
                       </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="agents" className="mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bot className="h-5 w-5" />
-              Agent Architecture
-            </CardTitle>
-            <CardDescription>
-              {result.agentArchitecture.description}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {result.agentArchitecture.agents.map((agent, index) => (
-                <div key={index} className="p-4 rounded-lg border">
-                  <h4 className="font-semibold">{agent.name}</h4>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {agent.role}
-                  </p>
-                  {agent.capabilities && agent.capabilities.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {agent.capabilities.map((cap, i) => (
-                        <Badge key={i} variant="outline">
-                          {cap}
-                        </Badge>
-                      ))}
                     </div>
                   )}
+                  {prompt.exampleOutput && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">EXAMPLE OUTPUT</Label>
+                      <p className="mt-1 text-sm text-muted-foreground bg-muted/50 p-2 rounded">
+                        {prompt.exampleOutput}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No AI prompts generated for this system.
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Workflow Tab */}
+        <TabsContent value="workflow" className="mt-4">
+          {result.automationWorkflow ? (
+            <Card>
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Workflow className="h-5 w-5" />
+                      {result.automationWorkflow.name}
+                    </CardTitle>
+                    <CardDescription>{result.automationWorkflow.description}</CardDescription>
+                  </div>
+                  <DownloadButton
+                    content={JSON.stringify(result.automationWorkflow, null, 2)}
+                    filename="workflow.json"
+                    label="Export JSON"
+                  />
                 </div>
-              ))}
-              {result.agentArchitecture.integrations &&
-                result.agentArchitecture.integrations.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="font-semibold mb-2">Integrations</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {result.agentArchitecture.integrations.map((int, i) => (
-                        <Badge key={i} variant="secondary">
-                          {int}
-                        </Badge>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Trigger */}
+                <div className="p-3 rounded-lg border bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-2 font-medium text-blue-700 dark:text-blue-300">
+                    <Zap className="h-4 w-4" />
+                    Trigger: {result.automationWorkflow.trigger.type}
+                  </div>
+                  <p className="text-sm mt-1 text-muted-foreground">{result.automationWorkflow.trigger.config}</p>
+                </div>
+
+                {/* Steps */}
+                <div className="space-y-3">
+                  {result.automationWorkflow.steps.map((step, index) => (
+                    <div key={step.id || index} className="flex gap-4 p-4 rounded-lg border">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold text-sm">
+                        {step.id || index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold">{step.name}</h4>
+                        <Badge variant="outline" className="mt-1">{step.type}</Badge>
+                        <p className="text-sm text-muted-foreground mt-2">{step.action}</p>
+                        {step.config && (
+                          <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-x-auto">
+                            {step.config}
+                          </pre>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Connections */}
+                {result.automationWorkflow.connections && result.automationWorkflow.connections.length > 0 && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">REQUIRED CONNECTIONS</Label>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {result.automationWorkflow.connections.map((conn, i) => (
+                        <Badge key={i} variant="secondary">{conn}</Badge>
                       ))}
                     </div>
                   </div>
                 )}
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No workflow generated for this system.
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
 
-      <TabsContent value="sop" className="mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Standard Operating Procedure
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              <pre className="whitespace-pre-wrap font-sans text-sm">
-                {result.sopText}
-              </pre>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="timeline" className="mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Timer className="h-5 w-5" />
-              Implementation Timeline
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {result.timeline.map((phase, index) => (
-                <div key={index} className="p-4 rounded-lg border">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-semibold">{phase.phase}</h4>
-                    <Badge variant="outline">{phase.duration}</Badge>
+        {/* Code Snippets Tab */}
+        <TabsContent value="code" className="mt-4 space-y-4">
+          {result.codeSnippets && result.codeSnippets.length > 0 ? (
+            result.codeSnippets.map((snippet, index) => (
+              <Card key={index}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Code className="h-4 w-4" />
+                        {snippet.name}
+                      </CardTitle>
+                      <CardDescription>{snippet.description}</CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                      <Badge variant="outline">{snippet.language}</Badge>
+                      <CopyButton text={snippet.code} />
+                    </div>
                   </div>
-                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                    {phase.tasks.map((task, i) => (
-                      <li key={i}>{task}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
+                </CardHeader>
+                <CardContent>
+                  <pre className="whitespace-pre-wrap font-mono text-sm bg-zinc-900 text-zinc-100 p-4 rounded-lg overflow-x-auto">
+                    {snippet.code}
+                  </pre>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No code snippets generated for this system.
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
 
-      <TabsContent value="resources" className="mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Wrench className="h-5 w-5" />
-              Required Resources
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {result.resources.map((resource, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-3 p-3 rounded-lg border"
-                >
-                  <Badge variant="secondary">{resource.type}</Badge>
+        {/* Email Templates Tab */}
+        <TabsContent value="emails" className="mt-4 space-y-4">
+          {result.emailTemplates && result.emailTemplates.length > 0 ? (
+            result.emailTemplates.map((template, index) => (
+              <Card key={index}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Mail className="h-4 w-4" />
+                        {template.name}
+                      </CardTitle>
+                    </div>
+                    <CopyButton text={`Subject: ${template.subject}\n\n${template.body}`} label="Copy All" />
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
                   <div>
-                    <h4 className="font-medium">{resource.name}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {resource.description}
-                    </p>
+                    <Label className="text-xs text-muted-foreground">SUBJECT</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="font-medium flex-1">{template.subject}</p>
+                      <CopyButton text={template.subject} label="Copy" />
+                    </div>
                   </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">BODY</Label>
+                    <pre className="mt-1 whitespace-pre-wrap font-sans text-sm bg-muted p-3 rounded-lg">
+                      {template.body}
+                    </pre>
+                  </div>
+                  {template.variables && template.variables.length > 0 && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">VARIABLES TO PERSONALIZE</Label>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {template.variables.map((v, i) => (
+                          <Badge key={i} variant="secondary">{`{{${v}}}`}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No email templates generated for this system.
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* API Config Tab */}
+        <TabsContent value="api" className="mt-4 space-y-4">
+          {result.apiConfig && result.apiConfig.length > 0 ? (
+            result.apiConfig.map((api, index) => (
+              <Card key={index}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Zap className="h-4 w-4" />
+                        {api.name}
+                      </CardTitle>
+                      <CardDescription>{api.description}</CardDescription>
+                    </div>
+                    <Badge>{api.method}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">ENDPOINT</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <code className="flex-1 text-sm bg-muted px-2 py-1 rounded">{api.endpoint}</code>
+                      <CopyButton text={api.endpoint} />
+                    </div>
+                  </div>
+                  {api.headers && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">HEADERS</Label>
+                      <pre className="mt-1 text-xs bg-zinc-900 text-zinc-100 p-2 rounded overflow-x-auto">
+                        {api.headers}
+                      </pre>
+                    </div>
+                  )}
+                  {api.body && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">REQUEST BODY</Label>
+                      <pre className="mt-1 text-xs bg-zinc-900 text-zinc-100 p-2 rounded overflow-x-auto">
+                        {api.body}
+                      </pre>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No API configurations generated for this system.
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Implementation Checklist Tab */}
+        <TabsContent value="checklist" className="mt-4">
+          {result.implementationChecklist && result.implementationChecklist.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <ListChecks className="h-5 w-5" />
+                      Implementation Checklist
+                    </CardTitle>
+                    <CardDescription>Step-by-step guide to implement this system</CardDescription>
+                  </div>
+                  <DownloadButton
+                    content={result.implementationChecklist.map(item => `[ ] ${item.task}\n   ${item.details}`).join('\n\n')}
+                    filename="checklist.txt"
+                    label="Export"
+                  />
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-    </Tabs>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {result.implementationChecklist.map((item, index) => (
+                    <div key={item.id || index} className="flex gap-4 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary/10 text-primary font-medium text-sm">
+                        {item.id || index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{item.task}</h4>
+                          <Badge variant="outline" className="text-xs">{item.category}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">{item.details}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No checklist generated for this system.
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
