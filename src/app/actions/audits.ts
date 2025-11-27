@@ -1,11 +1,11 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { Audit } from "@/types/database";
 
 export async function getAudits(status?: string) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseClient();
 
   let query = supabase
     .from("audits")
@@ -19,6 +19,7 @@ export async function getAudits(status?: string) {
   const { data, error } = await query;
 
   if (error) {
+    console.error("Error fetching audits:", error);
     throw new Error(error.message);
   }
 
@@ -26,7 +27,7 @@ export async function getAudits(status?: string) {
 }
 
 export async function getAudit(id: string) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseClient();
   const { data, error } = await supabase
     .from("audits")
     .select("*")
@@ -47,7 +48,7 @@ export async function createAudit(formData: {
   description?: string;
   status?: "new" | "in-progress" | "completed";
 }) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseClient();
 
   const { data, error } = await supabase
     .from("audits")
@@ -64,6 +65,7 @@ export async function createAudit(formData: {
     .single();
 
   if (error) {
+    console.error("Error creating audit:", error);
     throw new Error(error.message);
   }
 
@@ -76,7 +78,7 @@ export async function updateAuditStatus(
   id: string,
   status: "new" | "in-progress" | "completed"
 ) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseClient();
 
   const { data, error } = await supabase
     .from("audits")
@@ -98,7 +100,7 @@ export async function updateAuditStatus(
 }
 
 export async function deleteAudit(id: string) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseClient();
 
   const { error } = await supabase.from("audits").delete().eq("id", id);
 
@@ -111,7 +113,7 @@ export async function deleteAudit(id: string) {
 }
 
 export async function convertAuditToProject(auditId: string, clientId: string) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseClient();
 
   // Get the audit
   const { data: audit, error: auditError } = await supabase

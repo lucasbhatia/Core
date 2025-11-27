@@ -1,17 +1,18 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { Client } from "@/types/database";
 
 export async function getClients() {
-  const supabase = await createClient();
+  const supabase = await createSupabaseClient();
   const { data, error } = await supabase
     .from("clients")
     .select("*")
     .order("created_at", { ascending: false });
 
   if (error) {
+    console.error("Error fetching clients:", error);
     throw new Error(error.message);
   }
 
@@ -19,7 +20,7 @@ export async function getClients() {
 }
 
 export async function getClient(id: string) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseClient();
   const { data, error } = await supabase
     .from("clients")
     .select("*")
@@ -40,7 +41,7 @@ export async function createClient(formData: {
   phone?: string;
   notes?: string;
 }) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseClient();
 
   const { data, error } = await supabase
     .from("clients")
@@ -57,6 +58,7 @@ export async function createClient(formData: {
     .single();
 
   if (error) {
+    console.error("Error creating client:", error);
     throw new Error(error.message);
   }
 
@@ -75,7 +77,7 @@ export async function updateClient(
     notes?: string;
   }
 ) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseClient();
 
   const { data, error } = await supabase
     .from("clients")
@@ -101,7 +103,7 @@ export async function updateClient(
 }
 
 export async function deleteClient(id: string) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseClient();
 
   const { error } = await supabase.from("clients").delete().eq("id", id);
 
