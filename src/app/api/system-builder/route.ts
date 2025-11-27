@@ -2,26 +2,69 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 
-const systemPrompt = `You are an expert automation system architect. When given a business process or problem description, you will design a comprehensive automation system.
+const systemPrompt = `You are an expert automation system builder. When given a business process or problem description, you will create READY-TO-USE deliverables that clients can immediately implement.
 
 Your response must be a valid JSON object with the following structure:
 {
-  "systemDiagram": "A text-based ASCII or description of the system architecture diagram",
-  "workflowSteps": [
-    {"id": 1, "title": "Step title", "description": "Detailed description", "tools": ["Tool1"]}
+  "systemOverview": "Brief 2-3 sentence summary of what this system does",
+  "aiPrompts": [
+    {
+      "name": "Prompt name (e.g., Email Response Generator)",
+      "purpose": "What this prompt does",
+      "prompt": "The actual complete prompt text the user can copy and use with AI. Include specific instructions, formatting requirements, and context.",
+      "variables": ["variable1", "variable2"],
+      "exampleOutput": "A brief example of what output this prompt produces"
+    }
   ],
-  "agentArchitecture": {
-    "name": "System name",
-    "description": "Overall system description",
-    "agents": [{"name": "Agent name", "role": "Role", "capabilities": ["Cap1"]}],
-    "integrations": ["Integration 1"]
+  "automationWorkflow": {
+    "name": "Workflow name",
+    "description": "What this workflow automates",
+    "trigger": {"type": "webhook|schedule|email|form", "config": "Configuration details"},
+    "steps": [
+      {"id": 1, "name": "Step name", "type": "action_type", "action": "What it does", "config": "Detailed configuration", "nextStep": 2}
+    ],
+    "connections": ["List of services/tools needed: Gmail, Slack, Notion, etc."]
   },
-  "sopText": "Standard Operating Procedure text",
-  "timeline": [{"phase": "Phase name", "duration": "Duration", "tasks": ["Task 1"]}],
-  "resources": [{"name": "Resource", "type": "Type", "description": "Description"}]
+  "codeSnippets": [
+    {
+      "name": "Snippet name",
+      "language": "javascript|python|bash",
+      "description": "What this code does",
+      "code": "Actual working code the user can copy and use"
+    }
+  ],
+  "emailTemplates": [
+    {
+      "name": "Template name",
+      "subject": "Email subject with {{variables}}",
+      "body": "Full email body text with {{variables}} for personalization",
+      "variables": ["variable1", "variable2"]
+    }
+  ],
+  "apiConfig": [
+    {
+      "name": "API configuration name",
+      "endpoint": "Full endpoint URL or path",
+      "method": "GET|POST|PUT|DELETE",
+      "headers": "JSON string of headers needed",
+      "body": "JSON string of request body template",
+      "description": "What this API call does"
+    }
+  ],
+  "implementationChecklist": [
+    {"id": 1, "task": "Task description", "details": "Specific steps to complete this task", "category": "Setup|Configuration|Testing|Deployment"}
+  ]
 }
 
-IMPORTANT: Your response must be ONLY the JSON object, no additional text or markdown.`;
+CRITICAL INSTRUCTIONS:
+1. Generate ACTUAL, USABLE content - real prompts, real code, real templates that work
+2. AI Prompts should be complete and ready to paste into ChatGPT/Claude
+3. Code snippets should be working code (JavaScript/Python) that can be copied and run
+4. Email templates should be professional and ready to use
+5. Be specific and detailed - avoid generic placeholder text
+6. Include at least 2-3 items in each array where relevant to the request
+
+Your response must be ONLY the JSON object, no additional text or markdown.`;
 
 function getSupabase() {
   return createClient(
@@ -76,12 +119,25 @@ export async function POST(req: Request) {
       result = JSON.parse(cleanJson);
     } catch {
       result = {
-        systemDiagram: "See workflow steps",
-        workflowSteps: [{ id: 1, title: "Design", description: responseText, tools: [] }],
-        agentArchitecture: { name: "System", description: responseText, agents: [], integrations: [] },
-        sopText: responseText,
-        timeline: [],
-        resources: [],
+        systemOverview: "System generated from your request. See details below.",
+        aiPrompts: [{
+          name: "Generated Prompt",
+          purpose: "Based on your request",
+          prompt: responseText,
+          variables: [],
+          exampleOutput: "Output will vary based on input"
+        }],
+        automationWorkflow: {
+          name: "Custom Workflow",
+          description: "Generated workflow",
+          trigger: { type: "manual", config: "Manual trigger" },
+          steps: [{ id: 1, name: "Process", type: "action", action: "Execute task", config: responseText }],
+          connections: []
+        },
+        codeSnippets: [],
+        emailTemplates: [],
+        apiConfig: [],
+        implementationChecklist: [{ id: 1, task: "Review generated content", details: responseText, category: "Setup" }]
       };
     }
 

@@ -43,44 +43,74 @@ export interface SystemBuild {
 }
 
 export interface SystemBuildResult {
-  systemDiagram: string;
-  workflowSteps: WorkflowStep[];
-  agentArchitecture: AgentArchitecture;
-  sopText: string;
-  timeline: TimelineItem[];
-  resources: Resource[];
+  systemOverview: string;
+  aiPrompts: AIPrompt[];
+  automationWorkflow: AutomationWorkflow;
+  codeSnippets: CodeSnippet[];
+  emailTemplates: EmailTemplate[];
+  apiConfig: APIConfig[];
+  implementationChecklist: ChecklistItem[];
+}
+
+export interface AIPrompt {
+  name: string;
+  purpose: string;
+  prompt: string;
+  variables: string[];
+  exampleOutput: string;
+}
+
+export interface AutomationWorkflow {
+  name: string;
+  description: string;
+  trigger: WorkflowTrigger;
+  steps: WorkflowStep[];
+  connections: string[];
+}
+
+export interface WorkflowTrigger {
+  type: string;
+  config: string;
 }
 
 export interface WorkflowStep {
   id: number;
-  title: string;
-  description: string;
-  tools: string[];
-}
-
-export interface AgentArchitecture {
-  name: string;
-  description: string;
-  agents: Agent[];
-  integrations: string[];
-}
-
-export interface Agent {
-  name: string;
-  role: string;
-  capabilities: string[];
-}
-
-export interface TimelineItem {
-  phase: string;
-  duration: string;
-  tasks: string[];
-}
-
-export interface Resource {
   name: string;
   type: string;
+  action: string;
+  config: string;
+  nextStep?: number;
+}
+
+export interface CodeSnippet {
+  name: string;
+  language: string;
   description: string;
+  code: string;
+}
+
+export interface EmailTemplate {
+  name: string;
+  subject: string;
+  body: string;
+  variables: string[];
+}
+
+export interface APIConfig {
+  name: string;
+  endpoint: string;
+  method: string;
+  headers: string;
+  body: string;
+  description: string;
+}
+
+export interface ChecklistItem {
+  id: number;
+  task: string;
+  details: string;
+  category: string;
+  completed?: boolean;
 }
 
 export interface ActivityItem {
