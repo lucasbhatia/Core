@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { createClient } from "@/lib/supabase/server";
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 
 const systemPrompt = `You are an expert automation system architect. When given a business process or problem description, you will design a comprehensive automation system.
 
@@ -58,8 +54,12 @@ Make your designs practical, detailed, and implementable. Focus on:
 IMPORTANT: Your response must be ONLY the JSON object, no additional text or markdown formatting.`;
 
 export async function POST(request: NextRequest) {
+  let buildId: string | null = null;
+
   try {
-    const { prompt, buildId } = await request.json();
+    const body = await request.json();
+    const { prompt } = body;
+    buildId = body.buildId || null;
 
     if (!prompt) {
       return NextResponse.json(
@@ -70,19 +70,23 @@ export async function POST(request: NextRequest) {
 
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
-        { error: "Anthropic API key not configured" },
+        { error: "Anthropic API key not configured. Add ANTHROPIC_API_KEY to your .env.local file." },
         { status: 500 }
       );
     }
 
     // Update status to processing
     if (buildId) {
-      const supabase = await createClient();
+      const supabase = await createSupabaseClient();
       await supabase
         .from("system_builds")
         .update({ status: "processing" })
         .eq("id", buildId);
     }
+
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
 
     const message = await anthropic.messages.create({
       model: "claude-3-5-sonnet-20241022",
@@ -134,7 +138,7 @@ export async function POST(request: NextRequest) {
 
     // Update the system build with results
     if (buildId) {
-      const supabase = await createClient();
+      const supabase = await createSupabaseClient();
       await supabase
         .from("system_builds")
         .update({
@@ -150,20 +154,23 @@ export async function POST(request: NextRequest) {
     console.error("System Builder API error:", error);
 
     // Update status to failed if we have a buildId
-    const body = await request.clone().json().catch(() => ({}));
-    if (body.buildId) {
-      const supabase = await createClient();
-      await supabase
-        .from("system_builds")
-        .update({
-          status: "failed",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", body.buildId);
+    if (buildId) {
+      try {
+        const supabase = await createSupabaseClient();
+        await supabase
+          .from("system_builds")
+          .update({
+            status: "failed",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", buildId);
+      } catch (dbError) {
+        console.error("Failed to update build status:", dbError);
+      }
     }
 
     return NextResponse.json(
-      { error: "Failed to generate system design" },
+      { error: "Failed to generate system design. Check your ANTHROPIC_API_KEY." },
       { status: 500 }
     );
   }
