@@ -1,6 +1,6 @@
 "use client";
 
-import { ClientTool, UserProfile } from "@/types/database";
+import { ClientTool } from "@/types/database";
 import {
   Card,
   CardContent,
@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Wand2, FileText, LayoutDashboard, Workflow, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
-const toolTypeIcons = {
+const toolTypeIcons: Record<string, typeof Wand2> = {
   ai_generator: Wand2,
   workflow: Workflow,
   form: FileText,
@@ -21,10 +21,9 @@ const toolTypeIcons = {
 
 interface PortalClientProps {
   tools: ClientTool[];
-  profile: UserProfile;
 }
 
-export function PortalClient({ tools, profile }: PortalClientProps) {
+export function PortalClient({ tools }: PortalClientProps) {
   if (tools.length === 0) {
     return (
       <Card>
@@ -32,9 +31,7 @@ export function PortalClient({ tools, profile }: PortalClientProps) {
           <Wand2 className="h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium">No tools available</h3>
           <p className="text-muted-foreground text-center mt-1 max-w-md">
-            {profile.role === "admin"
-              ? "Create tools in the Tool Builder to see them here."
-              : "Your account hasn't been set up with any tools yet. Contact your administrator."}
+            Create tools in the Tool Builder to see them here.
           </p>
         </CardContent>
       </Card>
@@ -65,7 +62,7 @@ export function PortalClient({ tools, profile }: PortalClientProps) {
                   <Badge variant="outline" className="text-xs">
                     {tool.input_fields?.length || 0} input fields
                   </Badge>
-                  {profile.role === "admin" && tool.client && (
+                  {tool.client && (
                     <span className="text-xs text-muted-foreground">
                       {tool.client.company}
                     </span>

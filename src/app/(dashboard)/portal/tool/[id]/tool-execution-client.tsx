@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ClientTool, UserProfile } from "@/types/database";
+import { ClientTool } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,10 +19,9 @@ import ReactMarkdown from "react-markdown";
 
 interface ToolExecutionClientProps {
   tool: ClientTool;
-  profile: UserProfile;
 }
 
-export function ToolExecutionClient({ tool, profile }: ToolExecutionClientProps) {
+export function ToolExecutionClient({ tool }: ToolExecutionClientProps) {
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [output, setOutput] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -45,8 +44,7 @@ export function ToolExecutionClient({ tool, profile }: ToolExecutionClientProps)
         body: JSON.stringify({
           toolId: tool.id,
           inputs,
-          userId: profile.id,
-          clientId: profile.client_id || tool.client_id,
+          clientId: tool.client_id,
         }),
       });
 
@@ -114,7 +112,7 @@ export function ToolExecutionClient({ tool, profile }: ToolExecutionClientProps)
     <div className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
-        <Link href="/portal">
+        <Link href="/tool-builder">
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -225,7 +223,7 @@ export function ToolExecutionClient({ tool, profile }: ToolExecutionClientProps)
                   <ReactMarkdown>{output}</ReactMarkdown>
                 ) : tool.output_format === "json" ? (
                   <pre className="bg-muted p-4 rounded-lg overflow-auto text-xs">
-                    {JSON.stringify(JSON.parse(output), null, 2)}
+                    {output}
                   </pre>
                 ) : tool.output_format === "html" ? (
                   <div dangerouslySetInnerHTML={{ __html: output }} />

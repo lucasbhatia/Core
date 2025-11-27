@@ -13,19 +13,15 @@ import {
   Menu,
   X,
   Wrench,
-  Sparkles,
-  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Separator } from "@/components/ui/separator";
-import { UserProfile } from "@/types/database";
 
-// Admin navigation
-const adminNavigation = [
+const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Clients", href: "/clients", icon: Users },
   { name: "Projects", href: "/projects", icon: FolderKanban },
@@ -35,41 +31,10 @@ const adminNavigation = [
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
-// Client navigation
-const clientNavigation = [
-  { name: "My Tools", href: "/portal", icon: Sparkles },
-  { name: "Usage", href: "/portal/usage", icon: BarChart3 },
-  { name: "Settings", href: "/settings", icon: Settings },
-];
-
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchProfile() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (user) {
-        const { data } = await supabase
-          .from("user_profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-
-        setUserProfile(data);
-      }
-      setLoading(false);
-    }
-
-    fetchProfile();
-  }, []);
-
-  const navigation = userProfile?.role === "admin" ? adminNavigation : clientNavigation;
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -117,9 +82,7 @@ export function Sidebar() {
           </div>
           <div>
             <h1 className="text-lg font-bold">CoreOS Hub</h1>
-            <p className="text-xs text-muted-foreground">
-              {loading ? "Loading..." : userProfile?.role === "admin" ? "Admin Portal" : "Client Portal"}
-            </p>
+            <p className="text-xs text-muted-foreground">Core Automations</p>
           </div>
         </div>
 
