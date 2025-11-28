@@ -24,13 +24,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch the automation workflow
+    // Fetch the automation workflow with its tasks
     const { data: automation, error: workflowError } = await supabase
       .from("workflows")
       .select(`
         *,
-        requests(content, source, subject, client_id),
-        agent_tasks(*)
+        requests(id, content, source, subject, client_id),
+        agent_tasks(
+          id,
+          agent_id,
+          name,
+          description,
+          instructions,
+          step_index,
+          depends_on
+        )
       `)
       .eq("id", workflowId)
       .eq("is_automation", true)
@@ -48,13 +56,14 @@ export async function POST(request: NextRequest) {
       .from("workflows")
       .insert({
         request_id: automation.request_id,
-        name: `${automation.name} - Run ${new Date().toISOString()}`,
+        client_id: automation.client_id,
+        name: `${automation.name} - Run ${new Date().toLocaleDateString()}`,
         description: automation.description,
         status: "pending",
-        workflow_type: automation.workflow_type,
-        priority: automation.priority,
-        template_workflow_id: workflowId, // Reference to the automation template
-        input_data: inputData || automation.input_data,
+        steps: automation.steps || [],
+        current_step: 0,
+        total_steps: automation.total_steps || 0,
+        template_workflow_id: workflowId,
       })
       .select()
       .single();
@@ -68,22 +77,33 @@ export async function POST(request: NextRequest) {
     }
 
     // Copy agent tasks from the automation template
-    if (automation.agent_tasks && automation.agent_tasks.length > 0) {
-      const tasksToCreate = automation.agent_tasks.map((task: {
+    const tasks = automation.agent_tasks || [];
+    if (tasks.length > 0) {
+      const tasksToCreate = tasks.map((task: {
         agent_id: string;
-        task_order: number;
+        name: string;
+        description: string;
         instructions: string;
-        input_type: string;
+        step_index: number;
+        depends_on: number[];
       }) => ({
         workflow_id: newWorkflow.id,
         agent_id: task.agent_id,
-        task_order: task.task_order,
+        name: task.name,
+        description: task.description,
         instructions: task.instructions,
-        input_type: task.input_type,
+        step_index: task.step_index,
+        depends_on: task.depends_on || [],
         status: "pending",
       }));
 
-      await supabase.from("agent_tasks").insert(tasksToCreate);
+      const { error: tasksError } = await supabase
+        .from("agent_tasks")
+        .insert(tasksToCreate);
+
+      if (tasksError) {
+        console.error("Failed to create tasks:", tasksError);
+      }
     }
 
     // Update automation run stats
@@ -95,11 +115,24 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", workflowId);
 
+    // Log the run in client_automation_runs if client exists
+    if (automation.client_id) {
+      await supabase.from("client_automation_runs").insert({
+        client_id: automation.client_id,
+        automation_id: workflowId,
+        workflow_run_id: newWorkflow.id,
+        status: "pending",
+        input_data: inputData || {},
+      });
+    }
+
     // Trigger workflow execution via Inngest
     await inngest.send({
       name: "workflow/execute",
       data: {
         workflowId: newWorkflow.id,
+        requestId: automation.request_id,
+        clientId: automation.client_id,
         isAutomationRun: true,
         templateWorkflowId: workflowId,
       },
