@@ -32,6 +32,10 @@ import {
   Calendar,
   FolderKanban,
   MessageSquare,
+  Plug,
+  Inbox,
+  Workflow,
+  History,
 } from "lucide-react";
 
 interface SidebarItem {
@@ -52,6 +56,7 @@ const sidebarGroups: SidebarGroup[] = [
     title: "Overview",
     items: [
       { label: "Dashboard", href: "/portal", icon: LayoutDashboard },
+      { label: "Ask AI", href: "/portal/ai-inbox", icon: MessageSquare, badge: "New" },
     ],
   },
   {
@@ -65,8 +70,9 @@ const sidebarGroups: SidebarGroup[] = [
   {
     title: "AI Tools",
     items: [
-      { label: "AI Workforce", href: "/portal/workforce", icon: UserPlus, badge: "New" },
+      { label: "AI Workforce", href: "/portal/workforce", icon: UserPlus },
       { label: "Automations", href: "/portal/automations", icon: Bot },
+      { label: "Visual Editor", href: "/portal/editor", icon: Workflow, badge: "New" },
       { label: "Create New", href: "/portal/builder", icon: PlusCircle },
       { label: "Templates", href: "/portal/templates", icon: Sparkles },
     ],
@@ -76,12 +82,13 @@ const sidebarGroups: SidebarGroup[] = [
     items: [
       { label: "Deliverables", href: "/portal/deliverables", icon: FolderOpen },
       { label: "Analytics", href: "/portal/analytics", icon: BarChart3 },
-      { label: "Activity", href: "/portal/activity", icon: Bell },
+      { label: "Activity", href: "/portal/activity", icon: History },
     ],
   },
   {
     title: "Account",
     items: [
+      { label: "Integrations", href: "/portal/integrations", icon: Plug },
       { label: "Billing", href: "/portal/billing", icon: CreditCard },
       { label: "Team", href: "/portal/team", icon: Users },
       { label: "Settings", href: "/portal/settings", icon: Settings },
