@@ -263,6 +263,24 @@ export default function PortalDashboard({
     }
   }
 
+  async function handleArchiveAutomation(id: string) {
+    try {
+      const response = await fetch(`/api/portal/automation/${id}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        toast({ title: "Automation archived", description: "The automation has been archived" });
+        window.location.reload();
+      } else {
+        const data = await response.json();
+        toast({ title: "Failed to archive", description: data.error || "Could not archive automation", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error archiving automation", variant: "destructive" });
+    }
+  }
+
   // Filter deliverables
   const filteredDeliverables = deliverables.filter((d) => {
     if (d.status === "archived") return false;
@@ -443,7 +461,29 @@ export default function PortalDashboard({
                             {automation.automation_trigger === "webhook" && "Triggered by events"}
                           </CardDescription>
                         </div>
-                        <StatusBadge status={automation.automation_status || "inactive"} />
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={automation.automation_status || "inactive"} />
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {automation.automation_status === "active" && (
+                                <DropdownMenuItem onClick={() => handleRunAutomation(automation.id)}>
+                                  <Play className="h-4 w-4 mr-2" />
+                                  Run Now
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleArchiveAutomation(automation.id)}>
+                                <Archive className="h-4 w-4 mr-2" />
+                                Archive
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent>
