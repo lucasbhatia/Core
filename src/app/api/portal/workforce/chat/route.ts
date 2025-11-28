@@ -204,7 +204,10 @@ Remember to stay in character and be helpful, professional, and on-brand.`;
       created_at: new Date().toISOString(),
     };
 
-    // Try to save messages to database
+    // Calculate credits used (approximately 1 credit per 100 tokens)
+    const creditsUsed = Math.ceil(tokensUsed / 100);
+
+    // Try to save messages to database and track usage
     try {
       await supabase.from("workforce_messages").insert([userMessage, assistantMessage]);
 
@@ -232,14 +235,45 @@ Remember to stay in character and be helpful, professional, and on-brand.`;
           })
           .eq("id", hired_agent_id);
       }
+
+      // Track usage for billing (credits)
+      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+      const { data: existingUsage } = await supabase
+        .from("client_usage")
+        .select("*")
+        .eq("client_id", clientId)
+        .eq("month", currentMonth)
+        .single();
+
+      if (existingUsage) {
+        await supabase
+          .from("client_usage")
+          .update({
+            ai_tokens_used: (existingUsage.ai_tokens_used || 0) + tokensUsed,
+            ai_credits_used: (existingUsage.ai_credits_used || 0) + creditsUsed,
+          })
+          .eq("id", existingUsage.id);
+      } else {
+        await supabase.from("client_usage").insert({
+          client_id: clientId,
+          month: currentMonth,
+          ai_tokens_used: tokensUsed,
+          ai_credits_used: creditsUsed,
+          automation_runs: 0,
+          storage_used_mb: 0,
+          api_calls: 0,
+        });
+      }
     } catch {
-      // Database tables may not exist
+      // Database tables may not exist - still return response
     }
 
     return NextResponse.json({
       conversation_id: currentConversationId,
       user_message: userMessage,
       assistant_message: assistantMessage,
+      credits_used: creditsUsed,
+      tokens_used: tokensUsed,
     });
   } catch (error) {
     console.error("Error in chat:", error);

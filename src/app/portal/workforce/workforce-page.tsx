@@ -37,13 +37,15 @@ import {
   Trash2,
   TrendingUp,
   Zap,
-  Lock,
   ChevronRight,
   CheckCircle,
   Briefcase,
   UserPlus,
+  Coins,
+  Info,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { AIAnalyticsOverview } from "@/components/portal/ai-analytics-dashboard";
 import {
   AGENT_ROSTER,
   getAgentsByDepartment,
@@ -96,12 +98,10 @@ const mockHiredAgents: HiredAgent[] = [
   },
 ];
 
-const tierOrder: AgentTier[] = ["free", "starter", "pro", "business", "enterprise"];
-
-function canAccessTier(userPlan: string, requiredTier: AgentTier): boolean {
-  const userTierIndex = tierOrder.indexOf(userPlan as AgentTier);
-  const requiredTierIndex = tierOrder.indexOf(requiredTier);
-  return userTierIndex >= requiredTierIndex;
+// All agents are now accessible on all plans - pricing is usage-based (credits)
+// This function always returns true as tier-locking is removed
+function canAccessAgent(): boolean {
+  return true;
 }
 
 export default function WorkforcePage({ clientId, clientPlan }: WorkforcePageProps) {
@@ -191,6 +191,9 @@ export default function WorkforcePage({ clientId, clientPlan }: WorkforcePagePro
 
   return (
     <div className="space-y-8">
+      {/* Analytics Overview */}
+      <AIAnalyticsOverview compact />
+
       {/* Header Stats */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="bg-gradient-to-br from-violet-50 to-indigo-50 border-violet-100">
@@ -437,6 +440,27 @@ export default function WorkforcePage({ clientId, clientPlan }: WorkforcePagePro
           </div>
         </div>
 
+        {/* Credit Info Banner */}
+        <Card className="mb-6 bg-gradient-to-r from-violet-50 to-indigo-50 border-violet-100">
+          <CardContent className="py-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
+              <Coins className="w-5 h-5 text-violet-600" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-violet-900">All agents available on every plan</p>
+              <p className="text-sm text-violet-700">
+                Tasks use credits based on complexity. Simple tasks: ~10-30 credits. Complex tasks: ~50-100 credits.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" className="border-violet-200 text-violet-700 hover:bg-violet-100" asChild>
+              <Link href="/portal/billing">
+                View Credits
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Search and Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1 sm:max-w-[400px]">
@@ -474,7 +498,7 @@ export default function WorkforcePage({ clientId, clientPlan }: WorkforcePagePro
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredAgents.map((agent) => {
             const hired = isAgentHired(agent.id);
-            const canAccess = canAccessTier(clientPlan, agent.tier_required);
+            const canAccess = canAccessAgent();
 
             return (
               <Card
@@ -482,9 +506,7 @@ export default function WorkforcePage({ clientId, clientPlan }: WorkforcePagePro
                 className={`group transition-all ${
                   hired
                     ? "border-green-200 bg-green-50/30"
-                    : canAccess
-                    ? "hover:shadow-lg hover:border-violet-200"
-                    : "opacity-75"
+                    : "hover:shadow-lg hover:border-violet-200"
                 }`}
               >
                 <CardHeader className="pb-3">
@@ -534,7 +556,7 @@ export default function WorkforcePage({ clientId, clientPlan }: WorkforcePagePro
                     )}
                   </div>
 
-                  {/* Tier and Popularity */}
+                  {/* Credit Cost and Popularity */}
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
                       {agent.is_popular && (
@@ -546,17 +568,9 @@ export default function WorkforcePage({ clientId, clientPlan }: WorkforcePagePro
                     </div>
                     <Badge
                       variant="outline"
-                      className={
-                        agent.tier_required === "free"
-                          ? "bg-green-50 text-green-700 border-green-200"
-                          : agent.tier_required === "starter"
-                          ? "bg-blue-50 text-blue-700 border-blue-200"
-                          : agent.tier_required === "pro"
-                          ? "bg-violet-50 text-violet-700 border-violet-200"
-                          : "bg-amber-50 text-amber-700 border-amber-200"
-                      }
+                      className="bg-violet-50 text-violet-700 border-violet-200"
                     >
-                      {agent.tier_required === "free" ? "Free" : `${agent.tier_required} plan`}
+                      ~{agent.monthly_cost_credits || 10}-{(agent.monthly_cost_credits || 10) * 5} credits/task
                     </Badge>
                   </div>
 
@@ -572,7 +586,7 @@ export default function WorkforcePage({ clientId, clientPlan }: WorkforcePagePro
                         Open Workspace
                       </Link>
                     </Button>
-                  ) : canAccess ? (
+                  ) : (
                     <Button
                       className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
                       onClick={() => {
@@ -582,11 +596,6 @@ export default function WorkforcePage({ clientId, clientPlan }: WorkforcePagePro
                     >
                       <UserPlus className="w-4 h-4 mr-2" />
                       Hire {agent.name}
-                    </Button>
-                  ) : (
-                    <Button variant="outline" className="w-full" disabled>
-                      <Lock className="w-4 h-4 mr-2" />
-                      Upgrade to {agent.tier_required}
                     </Button>
                   )}
                 </CardContent>

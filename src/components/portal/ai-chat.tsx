@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,8 @@ export default function AIChat({ context }: AIChatProps) {
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -63,6 +65,43 @@ export default function AIChat({ context }: AIChatProps) {
       inputRef.current.focus();
     }
   }, [isOpen]);
+
+  // Handle click outside to close chat
+  const handleClickOutside = useCallback((event: MouseEvent) => {
+    // Don't close if clicking inside the card or the open button
+    if (
+      cardRef.current &&
+      !cardRef.current.contains(event.target as Node) &&
+      buttonRef.current &&
+      !buttonRef.current.contains(event.target as Node)
+    ) {
+      setIsOpen(false);
+    }
+  }, []);
+
+  // Handle escape key to close chat
+  const handleEscapeKey = useCallback((event: KeyboardEvent) => {
+    if (event.key === "Escape" && isOpen) {
+      setIsOpen(false);
+    }
+  }, [isOpen]);
+
+  // Add event listeners for click outside and escape key
+  useEffect(() => {
+    if (isOpen) {
+      // Small delay to prevent immediate closing when opening
+      const timeoutId = setTimeout(() => {
+        document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("keydown", handleEscapeKey);
+      }, 100);
+
+      return () => {
+        clearTimeout(timeoutId);
+        document.removeEventListener("mousedown", handleClickOutside);
+        document.removeEventListener("keydown", handleEscapeKey);
+      };
+    }
+  }, [isOpen, handleClickOutside, handleEscapeKey]);
 
   async function sendMessage(content: string) {
     if (!content.trim() || isLoading) return;
@@ -141,6 +180,7 @@ export default function AIChat({ context }: AIChatProps) {
   if (!isOpen) {
     return (
       <Button
+        ref={buttonRef}
         onClick={() => setIsOpen(true)}
         className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all z-50 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
         size="icon"
@@ -153,6 +193,7 @@ export default function AIChat({ context }: AIChatProps) {
 
   return (
     <Card
+      ref={cardRef}
       className={cn(
         "fixed z-50 shadow-2xl border-0 flex flex-col transition-all duration-300 ease-in-out",
         isExpanded
