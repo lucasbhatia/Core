@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Bell,
   LogOut,
   Settings,
   User,
@@ -22,6 +20,8 @@ import {
   Command,
 } from "lucide-react";
 import { logoutPortal } from "@/app/actions/portal-auth";
+import NotificationDropdown from "./notification-dropdown";
+import RunningAutomations from "./running-automations";
 import type { Client } from "@/types/database";
 
 interface PortalHeaderProps {
@@ -68,37 +68,11 @@ export default function PortalHeader({
 
         {/* Right: Actions */}
         <div className="flex items-center gap-3">
+          {/* Running Automations */}
+          <RunningAutomations />
+
           {/* Notifications */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                {notificationCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px]"
-                  >
-                    {notificationCount > 9 ? "9+" : notificationCount}
-                  </Badge>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[350px]">
-              <div className="flex items-center justify-between px-4 py-2 border-b">
-                <span className="font-semibold">Notifications</span>
-                {notificationCount > 0 && (
-                  <Button variant="ghost" size="sm" className="text-xs h-7">
-                    Mark all read
-                  </Button>
-                )}
-              </div>
-              <div className="py-4 text-center text-sm text-muted-foreground">
-                {notificationCount > 0
-                  ? `You have ${notificationCount} new notifications`
-                  : "No new notifications"}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <NotificationDropdown />
 
           {/* User Menu */}
           <DropdownMenu>
