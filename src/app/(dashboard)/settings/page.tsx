@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { User, Shield, Database, Cpu, Loader2 } from "lucide-react";
+import { User, Shield, Database, Cpu, Loader2, Palette } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { ThemeSettings } from "@/components/settings/theme-settings";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 export default function SettingsPage() {
@@ -124,6 +125,13 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        <Separator />
+
+        {/* Theme Settings */}
+        <ThemeSettings />
+
+        <Separator />
 
         {/* Security Section */}
         <Card>

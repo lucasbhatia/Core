@@ -3,28 +3,40 @@
 @tailwind utilities;
 
 @layer base {
+  /* ========================================
+     DEFAULT THEME - Professional Purple
+     Clean, readable with good contrast
+     ======================================== */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 0 0% 99%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 222 47% 11%;
     --primary: 262 83% 58%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
     --ring: 262 83% 58%;
-    --radius: 0.75rem;
-    --chart-1: 12 76% 61%;
+    --radius: 0.625rem;
+    --sidebar-bg: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-accent: 262 83% 58%;
+    --chart-1: 262 83% 58%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
@@ -32,30 +44,336 @@
   }
 
   .dark {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
-    --card: 224 71% 4%;
-    --card-foreground: 213 31% 91%;
-    --popover: 224 71% 4%;
-    --popover-foreground: 213 31% 91%;
-    --primary: 262 83% 58%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 222.2 47.4% 11.2%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 223 47% 11%;
-    --muted-foreground: 215.4 16.3% 56.9%;
-    --accent: 216 34% 17%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
-    --ring: 262 83% 58%;
-    --chart-1: 220 70% 50%;
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 262 83% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 217 33% 15%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 96%;
+    --destructive: 0 62% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 262 83% 65%;
+    --sidebar-bg: 222 47% 8%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-border: 217 33% 17%;
+    --sidebar-accent: 262 83% 65%;
+    --chart-1: 262 83% 65%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+  }
+
+  /* ========================================
+     OCEAN THEME - Calm blue tones
+     ======================================== */
+  .theme-ocean {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 199 89% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 199 89% 48%;
+    --sidebar-bg: 199 89% 48%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-border: 199 89% 42%;
+    --sidebar-accent: 0 0% 100%;
+    --chart-1: 199 89% 48%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .theme-ocean.dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 199 89% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 217 33% 15%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 96%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 199 89% 55%;
+    --sidebar-bg: 199 70% 35%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-border: 199 70% 30%;
+    --sidebar-accent: 0 0% 100%;
+  }
+
+  /* ========================================
+     FOREST THEME - Natural green tones
+     ======================================== */
+  .theme-forest {
+    --background: 138 30% 98%;
+    --foreground: 150 40% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 150 40% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 150 40% 11%;
+    --primary: 142 71% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 138 30% 96%;
+    --secondary-foreground: 150 40% 11%;
+    --muted: 138 30% 96%;
+    --muted-foreground: 150 16% 47%;
+    --accent: 138 30% 96%;
+    --accent-foreground: 150 40% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --border: 138 20% 90%;
+    --input: 138 20% 90%;
+    --ring: 142 71% 45%;
+    --sidebar-bg: 142 71% 45%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-border: 142 71% 38%;
+    --sidebar-accent: 0 0% 100%;
+    --chart-1: 142 71% 45%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .theme-forest.dark {
+    --background: 150 30% 6%;
+    --foreground: 138 30% 96%;
+    --card: 150 30% 8%;
+    --card-foreground: 138 30% 96%;
+    --popover: 150 30% 8%;
+    --popover-foreground: 138 30% 96%;
+    --primary: 142 71% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 150 25% 17%;
+    --secondary-foreground: 138 30% 96%;
+    --muted: 150 25% 15%;
+    --muted-foreground: 138 20% 65%;
+    --accent: 150 25% 17%;
+    --accent-foreground: 138 30% 96%;
+    --border: 150 25% 17%;
+    --input: 150 25% 17%;
+    --ring: 142 71% 50%;
+    --sidebar-bg: 142 50% 28%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-border: 142 50% 22%;
+    --sidebar-accent: 0 0% 100%;
+  }
+
+  /* ========================================
+     SUNSET THEME - Warm orange/coral tones
+     ======================================== */
+  .theme-sunset {
+    --background: 30 40% 98%;
+    --foreground: 20 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 47% 11%;
+    --primary: 24 95% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 30 40% 96%;
+    --secondary-foreground: 20 47% 11%;
+    --muted: 30 40% 96%;
+    --muted-foreground: 20 16% 47%;
+    --accent: 30 40% 96%;
+    --accent-foreground: 20 47% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --border: 30 25% 90%;
+    --input: 30 25% 90%;
+    --ring: 24 95% 53%;
+    --sidebar-bg: 24 95% 53%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-border: 24 95% 45%;
+    --sidebar-accent: 0 0% 100%;
+    --chart-1: 24 95% 53%;
+    --chart-2: 340 75% 55%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 262 83% 58%;
+  }
+
+  .theme-sunset.dark {
+    --background: 20 30% 6%;
+    --foreground: 30 40% 96%;
+    --card: 20 30% 8%;
+    --card-foreground: 30 40% 96%;
+    --popover: 20 30% 8%;
+    --popover-foreground: 30 40% 96%;
+    --primary: 24 95% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 20 25% 17%;
+    --secondary-foreground: 30 40% 96%;
+    --muted: 20 25% 15%;
+    --muted-foreground: 30 20% 65%;
+    --accent: 20 25% 17%;
+    --accent-foreground: 30 40% 96%;
+    --border: 20 25% 17%;
+    --input: 20 25% 17%;
+    --ring: 24 95% 58%;
+    --sidebar-bg: 24 70% 38%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-border: 24 70% 30%;
+    --sidebar-accent: 0 0% 100%;
+  }
+
+  /* ========================================
+     SLATE THEME - Professional gray
+     ======================================== */
+  .theme-slate {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 215 25% 27%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 20% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --border: 214 20% 91%;
+    --input: 214 20% 91%;
+    --ring: 215 25% 27%;
+    --sidebar-bg: 215 25% 27%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-border: 215 25% 22%;
+    --sidebar-accent: 0 0% 100%;
+    --chart-1: 215 25% 27%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .theme-slate.dark {
+    --background: 222 47% 6%;
+    --foreground: 210 20% 96%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 20% 96%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 20% 96%;
+    --primary: 215 20% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 20% 96%;
+    --muted: 217 33% 15%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 20% 96%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 215 20% 55%;
+    --sidebar-bg: 215 25% 18%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-border: 215 25% 14%;
+    --sidebar-accent: 215 20% 55%;
+  }
+
+  /* ========================================
+     PORTAL THEME - Client portal specific
+     Clean and professional for clients
+     ======================================== */
+  .portal-theme {
+    --background: 220 20% 97%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 262 83% 95%;
+    --accent-foreground: 262 83% 40%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 262 83% 58%;
+  }
+
+  .portal-theme.dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
+    --card: 222 47% 10%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 47% 10%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 262 83% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 217 33% 15%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 262 50% 20%;
+    --accent-foreground: 262 83% 75%;
+    --border: 217 33% 17%;
+    --input: 217 33% 20%;
+    --ring: 262 83% 65%;
   }
 }
 
@@ -95,6 +413,18 @@
 
 .gradient-card {
   background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%);
+}
+
+/* Sidebar with theme colors */
+.sidebar-themed {
+  background: hsl(var(--sidebar-bg));
+  color: hsl(var(--sidebar-foreground));
+  border-color: hsl(var(--sidebar-border));
+}
+
+.sidebar-themed .sidebar-item-active {
+  background: hsl(var(--sidebar-accent) / 0.2);
+  color: hsl(var(--sidebar-accent));
 }
 
 /* Glassmorphism effect */
