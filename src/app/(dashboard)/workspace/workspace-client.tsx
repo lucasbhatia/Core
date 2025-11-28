@@ -61,6 +61,8 @@ import {
   ExternalLink,
   AlertCircle,
   Eye,
+  Archive,
+  Trash2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
@@ -283,6 +285,46 @@ export function WorkspaceClient({
       }
     } catch (error) {
       toast({ title: "Error", description: "Failed to update automation", variant: "destructive" });
+    }
+  };
+
+  const handleArchiveAutomation = async (workflowId: string) => {
+    try {
+      const response = await fetch(`/api/workspace/automation/${workflowId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        toast({ title: "Automation archived", description: "The automation has been archived" });
+        window.location.reload();
+      } else {
+        const data = await response.json();
+        toast({ title: "Error", description: data.error || "Failed to archive", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to archive automation", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteAutomation = async (workflowId: string) => {
+    if (!confirm("Are you sure you want to permanently delete this automation? This cannot be undone.")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/workspace/automation/${workflowId}?permanent=true`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        toast({ title: "Automation deleted", description: "The automation has been permanently deleted" });
+        window.location.reload();
+      } else {
+        const data = await response.json();
+        toast({ title: "Error", description: data.error || "Failed to delete", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to delete automation", variant: "destructive" });
     }
   };
 
@@ -783,6 +825,17 @@ export function WorkspaceClient({
                                 Activate
                               </DropdownMenuItem>
                             )}
+                            <DropdownMenuItem onClick={() => handleArchiveAutomation(automation.id)}>
+                              <Archive className="h-4 w-4 mr-2" />
+                              Archive
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteAutomation(automation.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>

@@ -304,3 +304,99 @@ export async function regenerateWebhookSecret(systemId: string) {
 
   return data.webhook_secret;
 }
+
+// Archive an automation (system_builds)
+export async function archiveAutomation(systemId: string) {
+  const supabase = await createSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("system_builds")
+    .update({
+      automation_status: "archived",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", systemId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data as SystemBuild;
+}
+
+// Delete an automation permanently (system_builds)
+export async function deleteAutomation(systemId: string) {
+  const supabase = await createSupabaseClient();
+
+  // First delete related runs and logs
+  const { data: runs } = await supabase
+    .from("automation_runs")
+    .select("id")
+    .eq("system_id", systemId);
+
+  if (runs && runs.length > 0) {
+    const runIds = runs.map((r) => r.id);
+    await supabase.from("automation_logs").delete().in("run_id", runIds);
+    await supabase.from("automation_runs").delete().eq("system_id", systemId);
+  }
+
+  // Delete metrics
+  await supabase.from("automation_metrics").delete().eq("system_id", systemId);
+
+  // Delete the automation
+  const { error } = await supabase
+    .from("system_builds")
+    .delete()
+    .eq("id", systemId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return { success: true };
+}
+
+// Archive a workflow automation
+export async function archiveWorkflowAutomation(workflowId: string) {
+  const supabase = await createSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("workflows")
+    .update({
+      is_automation: false,
+      automation_status: "inactive",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", workflowId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+// Restore an archived automation
+export async function restoreAutomation(systemId: string) {
+  const supabase = await createSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("system_builds")
+    .update({
+      automation_status: "paused",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", systemId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data as SystemBuild;
+}
