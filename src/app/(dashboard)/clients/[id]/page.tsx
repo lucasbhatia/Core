@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Pencil, Mail, Phone, Building2, FileText, Calendar } from "lucide-react";
+import { ArrowLeft, Pencil, Mail, Phone, Building2, FileText, Calendar, Cpu, ExternalLink } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
+import { ClientPortalActions } from "./client-portal-actions";
 
 async function getClient(id: string) {
   const supabase = await createClient();
@@ -33,6 +34,17 @@ async function getClientProjects(clientId: string) {
   return data || [];
 }
 
+async function getClientSystems(clientId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("system_builds")
+    .select("*")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+
+  return data || [];
+}
+
 export default async function ClientDetailPage({
   params,
 }: {
@@ -45,7 +57,10 @@ export default async function ClientDetailPage({
     notFound();
   }
 
-  const projects = await getClientProjects(id);
+  const [projects, systems] = await Promise.all([
+    getClientProjects(id),
+    getClientSystems(id),
+  ]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -61,12 +76,15 @@ export default async function ClientDetailPage({
             <p className="text-muted-foreground">{client.company}</p>
           </div>
         </div>
-        <Link href={`/clients/${id}/edit`}>
-          <Button className="gap-2">
-            <Pencil className="h-4 w-4" />
-            Edit Client
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <ClientPortalActions clientId={id} clientEmail={client.email} />
+          <Link href={`/clients/${id}/edit`}>
+            <Button className="gap-2">
+              <Pencil className="h-4 w-4" />
+              Edit Client
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -169,6 +187,64 @@ export default async function ClientDetailPage({
                     {project.status}
                   </Badge>
                 </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Cpu className="h-5 w-5" />
+            Assigned Systems ({systems.length})
+          </CardTitle>
+          <Link href="/system-builder">
+            <Button variant="outline" size="sm">
+              View All Systems
+            </Button>
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {systems.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">
+                No systems assigned to this client yet.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Create a system in the System Builder and assign it to this client to give them portal access.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {systems.map((system) => (
+                <div
+                  key={system.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
+                >
+                  <div className="flex-1">
+                    <p className="font-medium">{system.title}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-1">
+                      {system.prompt}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant={system.status === "completed" ? "success" : "secondary"}>
+                        {system.status}
+                      </Badge>
+                      {system.actions && system.actions.length > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          {system.actions.length} action{system.actions.length !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Link href={`/system-builder?selected=${system.id}`}>
+                    <Button variant="ghost" size="sm" className="gap-1">
+                      <ExternalLink className="h-3 w-3" />
+                      View
+                    </Button>
+                  </Link>
+                </div>
               ))}
             </div>
           )}

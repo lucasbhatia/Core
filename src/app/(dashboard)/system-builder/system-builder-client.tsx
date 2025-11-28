@@ -349,8 +349,22 @@ export function SystemBuilderClient({ initialBuilds, clients }: SystemBuilderCli
           )}
 
           {/* Portal Actions Preview */}
-          {selectedBuild?.actions && selectedBuild.actions.length > 0 && (
+          {selectedBuild?.actions && selectedBuild.actions.length > 0 ? (
             <ActionsPreview actions={selectedBuild.actions} />
+          ) : selectedBuild?.status === "completed" && (
+            <RegenerateActionsCard
+              systemId={selectedBuild.id}
+              onRegenerated={(actions) => {
+                setBuilds((prevBuilds) =>
+                  prevBuilds.map((b) =>
+                    b.id === selectedBuild.id
+                      ? { ...b, actions }
+                      : b
+                  )
+                );
+                setSelectedBuild({ ...selectedBuild, actions });
+              }}
+            />
           )}
 
           {selectedBuild?.result && (
@@ -847,6 +861,7 @@ interface ClientAssignmentProps {
 
 function ClientAssignment({ systemId, currentClientId, clients, onAssign }: ClientAssignmentProps) {
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
   const { toast } = useToast();
 
   async function handleAssign(clientId: string) {
@@ -873,6 +888,40 @@ function ClientAssignment({ systemId, currentClientId, clients, onAssign }: Clie
     }
   }
 
+  async function handlePreviewAsClient() {
+    if (!currentClientId) return;
+    setIsPreviewing(true);
+    try {
+      const response = await fetch("/api/portal/dev-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId: currentClientId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create preview session");
+      }
+
+      // Open portal in new tab
+      window.open("/portal", "_blank");
+      toast({
+        title: "Preview session created",
+        description: "Portal opened in a new tab.",
+        variant: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to preview",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPreviewing(false);
+    }
+  }
+
   const currentClient = clients.find((c) => c.id === currentClientId);
 
   return (
@@ -892,23 +941,118 @@ function ClientAssignment({ systemId, currentClientId, clients, onAssign }: Clie
               </p>
             </div>
           </div>
-          <Select
-            value={currentClientId || "none"}
-            onValueChange={handleAssign}
-            disabled={isAssigning}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Select client" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No client</SelectItem>
-              {clients.map((client) => (
-                <SelectItem key={client.id} value={client.id}>
-                  {client.name} ({client.company})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Select
+              value={currentClientId || "none"}
+              onValueChange={handleAssign}
+              disabled={isAssigning}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select client" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No client</SelectItem>
+                {clients.map((client) => (
+                  <SelectItem key={client.id} value={client.id}>
+                    {client.name} ({client.company})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {currentClientId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePreviewAsClient}
+                disabled={isPreviewing}
+              >
+                {isPreviewing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Eye className="w-4 h-4 mr-1" />
+                    Preview
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Regenerate Actions Card Component
+interface RegenerateActionsCardProps {
+  systemId: string;
+  onRegenerated: (actions: SystemAction[]) => void;
+}
+
+function RegenerateActionsCard({ systemId, onRegenerated }: RegenerateActionsCardProps) {
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const { toast } = useToast();
+
+  async function handleRegenerate() {
+    setIsRegenerating(true);
+    try {
+      const response = await fetch("/api/system-builder/regenerate-actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ systemId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to regenerate actions");
+      }
+
+      onRegenerated(data.actions);
+      toast({
+        title: "Actions generated!",
+        description: "Portal actions are now available for this system.",
+        variant: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to regenerate actions",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRegenerating(false);
+    }
+  }
+
+  return (
+    <Card className="bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800">
+      <CardContent className="py-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900 rounded-full flex items-center justify-center">
+              <Zap className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+            </div>
+            <div>
+              <p className="font-medium text-sm">No Portal Actions</p>
+              <p className="text-xs text-muted-foreground">
+                Generate actions so clients can use this system
+              </p>
+            </div>
+          </div>
+          <Button onClick={handleRegenerate} disabled={isRegenerating} size="sm">
+            {isRegenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 mr-2" />
+                Generate Actions
+              </>
+            )}
+          </Button>
         </div>
       </CardContent>
     </Card>
