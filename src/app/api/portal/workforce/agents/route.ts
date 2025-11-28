@@ -104,19 +104,10 @@ export async function POST(request: NextRequest) {
     const plan = client?.plan || "free";
     const limits = getWorkforceLimits(plan);
 
-    // Check tier access
-    const tierOrder = ["free", "starter", "pro", "business", "enterprise"];
-    const userTierIndex = tierOrder.indexOf(plan);
-    const requiredTierIndex = tierOrder.indexOf(rosterAgent.tier_required);
+    // All agents are now accessible on all plans (usage-based pricing)
+    // No tier locking - users pay per usage with credits
 
-    if (userTierIndex < requiredTierIndex) {
-      return NextResponse.json(
-        { error: `This agent requires ${rosterAgent.tier_required} plan or higher` },
-        { status: 403 }
-      );
-    }
-
-    // Check if already at limit
+    // Check if already at limit (but much more generous limits)
     const { count } = await supabase
       .from("hired_agents")
       .select("*", { count: "exact", head: true })
