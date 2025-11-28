@@ -7,17 +7,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { logoutPortal } from "@/app/actions/portal-auth";
 import {
@@ -37,10 +48,22 @@ import {
   Eye,
   Copy,
   CheckCheck,
+  Search,
+  Filter,
+  MoreVertical,
+  Archive,
+  Edit2,
+  FolderOpen,
+  BarChart3,
+  FileCode,
+  FileSpreadsheet,
+  Presentation,
+  File,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useToast } from "@/components/ui/use-toast";
 
-// Type definitions for workflow data
+// Type definitions
 interface Workflow {
   id: string;
   name: string;
@@ -71,11 +94,15 @@ interface Deliverable {
   name: string;
   description?: string;
   file_type: string;
+  category?: string;
+  tags?: string[];
   content?: string;
   file_url?: string;
   status: string;
   created_at: string;
+  updated_at?: string;
   workflow?: {
+    id: string;
     name: string;
     status: string;
   };
@@ -90,29 +117,37 @@ interface Deliverable {
 
 interface PortalDashboardProps {
   client: Client;
-  systems?: unknown[]; // Legacy - kept for compatibility but not displayed
+  systems?: unknown[];
   workflows?: Workflow[];
   automations?: Workflow[];
   deliverables?: Deliverable[];
 }
 
+// Category icon mapping
+const categoryIcons: Record<string, React.ReactNode> = {
+  report: <BarChart3 className="w-4 h-4" />,
+  document: <FileText className="w-4 h-4" />,
+  analysis: <BarChart3 className="w-4 h-4" />,
+  presentation: <Presentation className="w-4 h-4" />,
+  code: <FileCode className="w-4 h-4" />,
+  data: <FileSpreadsheet className="w-4 h-4" />,
+  general: <File className="w-4 h-4" />,
+};
+
 // Status badge component
 function StatusBadge({ status }: { status: string }) {
   const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode; label: string }> = {
     pending: { variant: "secondary", icon: <Clock className="w-3 h-3" />, label: "Pending" },
-    classifying: { variant: "secondary", icon: <Loader2 className="w-3 h-3 animate-spin" />, label: "Processing" },
-    planning: { variant: "secondary", icon: <Loader2 className="w-3 h-3 animate-spin" />, label: "Planning" },
-    in_progress: { variant: "default", icon: <Loader2 className="w-3 h-3 animate-spin" />, label: "In Progress" },
     running: { variant: "default", icon: <Loader2 className="w-3 h-3 animate-spin" />, label: "Running" },
-    review: { variant: "secondary", icon: <Eye className="w-3 h-3" />, label: "In Review" },
     completed: { variant: "default", icon: <CheckCircle className="w-3 h-3" />, label: "Completed" },
     delivered: { variant: "default", icon: <CheckCheck className="w-3 h-3" />, label: "Delivered" },
     failed: { variant: "destructive", icon: <AlertCircle className="w-3 h-3" />, label: "Failed" },
     draft: { variant: "outline", icon: <FileText className="w-3 h-3" />, label: "Draft" },
     active: { variant: "default", icon: <Play className="w-3 h-3" />, label: "Active" },
     inactive: { variant: "secondary", icon: <Clock className="w-3 h-3" />, label: "Inactive" },
-    paused: { variant: "outline", icon: <Clock className="w-3 h-3" />, label: "Paused" },
     approved: { variant: "default", icon: <CheckCircle className="w-3 h-3" />, label: "Approved" },
+    review: { variant: "secondary", icon: <Eye className="w-3 h-3" />, label: "Review" },
+    archived: { variant: "outline", icon: <Archive className="w-3 h-3" />, label: "Archived" },
   };
 
   const config = statusConfig[status] || statusConfig.pending;
@@ -132,9 +167,18 @@ export default function PortalDashboard({
   deliverables = [],
 }: PortalDashboardProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [selectedDeliverable, setSelectedDeliverable] = useState<Deliverable | null>(null);
+  const [editingDeliverable, setEditingDeliverable] = useState<Deliverable | null>(null);
   const [copied, setCopied] = useState(false);
+  const [runningAutomation, setRunningAutomation] = useState<string | null>(null);
+
+  // Deliverables filtering
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [groupByWorkflow, setGroupByWorkflow] = useState(false);
 
   async function handleLogout() {
     setIsLoggingOut(true);
@@ -146,10 +190,103 @@ export default function PortalDashboard({
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    toast({ title: "Copied to clipboard" });
   }
 
-  // Count active items
-  const activeJobs = workflows.filter((w) => ["running", "in_progress", "planning", "classifying"].includes(w.status)).length;
+  async function handleRunAutomation(automationId: string) {
+    setRunningAutomation(automationId);
+    try {
+      const response = await fetch("/api/portal/automation/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ automationId }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Automation started",
+          description: "Your automation is now running. Results will appear shortly.",
+        });
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        toast({
+          title: "Failed to start",
+          description: data.error || "Could not start automation",
+          variant: "destructive",
+        });
+      }
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to start automation",
+        variant: "destructive",
+      });
+    } finally {
+      setRunningAutomation(null);
+    }
+  }
+
+  async function handleUpdateDeliverable(id: string, updates: Partial<Deliverable>) {
+    try {
+      const response = await fetch(`/api/portal/deliverables/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+
+      if (response.ok) {
+        toast({ title: "Deliverable updated" });
+        setEditingDeliverable(null);
+        window.location.reload();
+      } else {
+        toast({ title: "Failed to update", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error updating deliverable", variant: "destructive" });
+    }
+  }
+
+  async function handleArchiveDeliverable(id: string) {
+    try {
+      const response = await fetch(`/api/portal/deliverables/${id}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        toast({ title: "Deliverable archived" });
+        window.location.reload();
+      }
+    } catch {
+      toast({ title: "Error archiving deliverable", variant: "destructive" });
+    }
+  }
+
+  // Filter deliverables
+  const filteredDeliverables = deliverables.filter((d) => {
+    if (d.status === "archived") return false;
+    if (searchQuery && !d.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (categoryFilter !== "all" && d.category !== categoryFilter) return false;
+    if (statusFilter !== "all" && d.status !== statusFilter) return false;
+    return true;
+  });
+
+  // Group deliverables by workflow if enabled
+  const groupedDeliverables = groupByWorkflow
+    ? filteredDeliverables.reduce((acc, d) => {
+        const workflowName = d.workflow?.name || "Other";
+        if (!acc[workflowName]) acc[workflowName] = [];
+        acc[workflowName].push(d);
+        return acc;
+      }, {} as Record<string, Deliverable[]>)
+    : null;
+
+  // Get unique categories
+  const categories = [...new Set(deliverables.map((d) => d.category).filter(Boolean))];
+
+  // Count stats
+  const activeJobs = workflows.filter((w) => ["running", "in_progress"].includes(w.status)).length;
   const completedJobs = workflows.filter((w) => w.status === "completed").length;
   const activeAutomations = automations.filter((a) => a.automation_status === "active").length;
 
@@ -180,6 +317,7 @@ export default function PortalDashboard({
                   <p className="font-medium">{client.name}</p>
                   <p className="text-muted-foreground">{client.email}</p>
                 </div>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
                   <LogOut className="w-4 h-4 mr-2" />
                   {isLoggingOut ? "Logging out..." : "Log out"}
@@ -198,7 +336,7 @@ export default function PortalDashboard({
             Welcome back, {client.name.split(" ")[0]}!
           </h1>
           <p className="text-muted-foreground mt-1">
-            View your jobs, deliverables, and automations
+            Manage your automations and view deliverables
           </p>
         </div>
 
@@ -237,7 +375,7 @@ export default function PortalDashboard({
                 <p className="text-sm text-muted-foreground">Deliverables</p>
                 <FileText className="w-4 h-4 text-green-500" />
               </div>
-              <p className="text-2xl font-bold">{deliverables.length}</p>
+              <p className="text-2xl font-bold">{deliverables.filter(d => d.status !== "archived").length}</p>
               <p className="text-xs text-muted-foreground mt-1">Ready to view</p>
             </CardContent>
           </Card>
@@ -255,30 +393,213 @@ export default function PortalDashboard({
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="jobs" className="space-y-4">
+        <Tabs defaultValue="automations" className="space-y-4">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="jobs" className="flex items-center gap-2">
-              <Inbox className="w-4 h-4" />
-              <span>Jobs</span>
-              {workflows.length > 0 && (
-                <Badge variant="secondary" className="ml-1">{workflows.length}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="deliverables" className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              <span>Deliverables</span>
-              {deliverables.length > 0 && (
-                <Badge variant="secondary" className="ml-1">{deliverables.length}</Badge>
-              )}
-            </TabsTrigger>
             <TabsTrigger value="automations" className="flex items-center gap-2">
               <Bot className="w-4 h-4" />
-              <span>Automations</span>
-              {automations.length > 0 && (
-                <Badge variant="secondary" className="ml-1">{automations.length}</Badge>
+              <span>My Automations</span>
+            </TabsTrigger>
+            <TabsTrigger value="deliverables" className="flex items-center gap-2">
+              <FolderOpen className="w-4 h-4" />
+              <span>Results Library</span>
+              {filteredDeliverables.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{filteredDeliverables.length}</Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="jobs" className="flex items-center gap-2">
+              <Inbox className="w-4 h-4" />
+              <span>Job History</span>
+            </TabsTrigger>
           </TabsList>
+
+          {/* Automations Tab */}
+          <TabsContent value="automations">
+            {automations.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Bot className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h3 className="font-medium text-gray-900 mb-1">No Automations Available</h3>
+                  <p className="text-muted-foreground">
+                    Automations set up for you will appear here.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {automations.map((automation) => (
+                  <Card key={automation.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <Bot className="w-4 h-4 text-purple-500" />
+                            {automation.name}
+                          </CardTitle>
+                          <CardDescription>
+                            {automation.automation_trigger === "manual" && "Run on demand"}
+                            {automation.automation_trigger === "scheduled" && "Runs automatically"}
+                            {automation.automation_trigger === "webhook" && "Triggered by events"}
+                          </CardDescription>
+                        </div>
+                        <StatusBadge status={automation.automation_status || "inactive"} />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          {automation.last_run_at && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              Last: {formatDistanceToNow(new Date(automation.last_run_at), { addSuffix: true })}
+                            </span>
+                          )}
+                          {automation.run_count !== undefined && (
+                            <span>{automation.run_count} runs</span>
+                          )}
+                        </div>
+
+                        {automation.automation_status === "active" && (
+                          <Button
+                            className="w-full"
+                            onClick={() => handleRunAutomation(automation.id)}
+                            disabled={runningAutomation === automation.id}
+                          >
+                            {runningAutomation === automation.id ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Starting...
+                              </>
+                            ) : (
+                              <>
+                                <Play className="w-4 h-4 mr-2" />
+                                Run Now
+                              </>
+                            )}
+                          </Button>
+                        )}
+
+                        {automation.automation_status !== "active" && (
+                          <p className="text-sm text-muted-foreground text-center py-2">
+                            This automation is currently {automation.automation_status || "inactive"}
+                          </p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Deliverables Tab */}
+          <TabsContent value="deliverables" className="space-y-4">
+            {/* Filters */}
+            <div className="flex flex-wrap gap-3 items-center">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search deliverables..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-[150px]">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat} value={cat || ""}>
+                      <div className="flex items-center gap-2">
+                        {categoryIcons[cat || "general"]}
+                        <span className="capitalize">{cat}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="delivered">Delivered</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button
+                variant={groupByWorkflow ? "default" : "outline"}
+                size="sm"
+                onClick={() => setGroupByWorkflow(!groupByWorkflow)}
+              >
+                <FolderOpen className="w-4 h-4 mr-1" />
+                Group by Job
+              </Button>
+            </div>
+
+            {filteredDeliverables.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FileText className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h3 className="font-medium text-gray-900 mb-1">No Results Found</h3>
+                  <p className="text-muted-foreground">
+                    {searchQuery || categoryFilter !== "all" || statusFilter !== "all"
+                      ? "Try adjusting your filters"
+                      : "Completed work will appear here"}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : groupByWorkflow && groupedDeliverables ? (
+              // Grouped view
+              <div className="space-y-6">
+                {Object.entries(groupedDeliverables).map(([workflowName, items]) => (
+                  <div key={workflowName}>
+                    <h3 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
+                      <FolderOpen className="w-4 h-4" />
+                      {workflowName}
+                      <Badge variant="secondary">{items.length}</Badge>
+                    </h3>
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                      {items.map((deliverable) => (
+                        <DeliverableCard
+                          key={deliverable.id}
+                          deliverable={deliverable}
+                          onView={() => setSelectedDeliverable(deliverable)}
+                          onEdit={() => setEditingDeliverable(deliverable)}
+                          onArchive={() => handleArchiveDeliverable(deliverable.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              // Grid view
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredDeliverables.map((deliverable) => (
+                  <DeliverableCard
+                    key={deliverable.id}
+                    deliverable={deliverable}
+                    onView={() => setSelectedDeliverable(deliverable)}
+                    onEdit={() => setEditingDeliverable(deliverable)}
+                    onArchive={() => handleArchiveDeliverable(deliverable.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
 
           {/* Jobs Tab */}
           <TabsContent value="jobs">
@@ -290,64 +611,14 @@ export default function PortalDashboard({
                   </div>
                   <h3 className="font-medium text-gray-900 mb-1">No Jobs Yet</h3>
                   <p className="text-muted-foreground">
-                    When work is submitted for you, it will appear here.
+                    Work submitted for you will appear here.
                   </p>
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {workflows.map((workflow) => (
                   <JobCard key={workflow.id} workflow={workflow} />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Deliverables Tab */}
-          <TabsContent value="deliverables">
-            {deliverables.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <FileText className="w-8 h-8 text-gray-400" />
-                  </div>
-                  <h3 className="font-medium text-gray-900 mb-1">No Deliverables Yet</h3>
-                  <p className="text-muted-foreground">
-                    Completed work will appear here for you to view and download.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2">
-                {deliverables.map((deliverable) => (
-                  <DeliverableCard
-                    key={deliverable.id}
-                    deliverable={deliverable}
-                    onView={() => setSelectedDeliverable(deliverable)}
-                  />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Automations Tab */}
-          <TabsContent value="automations">
-            {automations.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Bot className="w-8 h-8 text-gray-400" />
-                  </div>
-                  <h3 className="font-medium text-gray-900 mb-1">No Automations Yet</h3>
-                  <p className="text-muted-foreground">
-                    Saved automations for recurring tasks will appear here.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2">
-                {automations.map((automation) => (
-                  <AutomationCard key={automation.id} automation={automation} />
                 ))}
               </div>
             )}
@@ -355,26 +626,31 @@ export default function PortalDashboard({
         </Tabs>
       </main>
 
-      {/* Deliverable View Dialog */}
+      {/* View Deliverable Dialog */}
       <Dialog open={!!selectedDeliverable} onOpenChange={() => setSelectedDeliverable(null)}>
         <DialogContent className="max-w-3xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary" />
+              {categoryIcons[selectedDeliverable?.category || "general"]}
               {selectedDeliverable?.name}
             </DialogTitle>
+            <DialogDescription>
+              {selectedDeliverable?.description}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            {selectedDeliverable?.description && (
-              <p className="text-sm text-muted-foreground">{selectedDeliverable.description}</p>
-            )}
-            {selectedDeliverable?.workflow && (
-              <div className="flex items-center gap-2 text-sm">
-                <Badge variant="outline">From: {selectedDeliverable.workflow.name}</Badge>
-                <StatusBadge status={selectedDeliverable.status} />
-              </div>
-            )}
-            <div className="h-[400px] w-full rounded-md border p-4 overflow-auto">
+            <div className="flex items-center gap-2 flex-wrap">
+              <StatusBadge status={selectedDeliverable?.status || "draft"} />
+              {selectedDeliverable?.category && (
+                <Badge variant="outline" className="capitalize">
+                  {selectedDeliverable.category}
+                </Badge>
+              )}
+              {selectedDeliverable?.workflow && (
+                <Badge variant="secondary">From: {selectedDeliverable.workflow.name}</Badge>
+              )}
+            </div>
+            <div className="h-[400px] w-full rounded-md border p-4 overflow-auto bg-gray-50">
               <div className="prose prose-sm max-w-none whitespace-pre-wrap">
                 {selectedDeliverable?.content || "No content available"}
               </div>
@@ -399,7 +675,128 @@ export default function PortalDashboard({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Deliverable Dialog */}
+      <Dialog open={!!editingDeliverable} onOpenChange={() => setEditingDeliverable(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Deliverable</DialogTitle>
+          </DialogHeader>
+          {editingDeliverable && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Name</label>
+                <Input
+                  value={editingDeliverable.name}
+                  onChange={(e) => setEditingDeliverable({ ...editingDeliverable, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Category</label>
+                <Select
+                  value={editingDeliverable.category || "general"}
+                  onValueChange={(value) => setEditingDeliverable({ ...editingDeliverable, category: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="report">Report</SelectItem>
+                    <SelectItem value="document">Document</SelectItem>
+                    <SelectItem value="analysis">Analysis</SelectItem>
+                    <SelectItem value="presentation">Presentation</SelectItem>
+                    <SelectItem value="code">Code</SelectItem>
+                    <SelectItem value="data">Data</SelectItem>
+                    <SelectItem value="general">General</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingDeliverable(null)}>
+              Cancel
+            </Button>
+            <Button onClick={() => editingDeliverable && handleUpdateDeliverable(editingDeliverable.id, {
+              name: editingDeliverable.name,
+              category: editingDeliverable.category,
+            })}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+// Deliverable Card Component
+function DeliverableCard({
+  deliverable,
+  onView,
+  onEdit,
+  onArchive,
+}: {
+  deliverable: Deliverable;
+  onView: () => void;
+  onEdit: () => void;
+  onArchive: () => void;
+}) {
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardHeader className="pb-2">
+        <div className="flex items-start justify-between">
+          <div className="space-y-1 flex-1 min-w-0">
+            <CardTitle className="text-sm flex items-center gap-2">
+              {categoryIcons[deliverable.category || "general"]}
+              <span className="truncate">{deliverable.name}</span>
+            </CardTitle>
+            {deliverable.description && (
+              <CardDescription className="line-clamp-1 text-xs">
+                {deliverable.description}
+              </CardDescription>
+            )}
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onView}>
+                <Eye className="w-4 h-4 mr-2" />
+                View
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onEdit}>
+                <Edit2 className="w-4 h-4 mr-2" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onArchive} className="text-destructive">
+                <Archive className="w-4 h-4 mr-2" />
+                Archive
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            {formatDistanceToNow(new Date(deliverable.created_at), { addSuffix: true })}
+          </span>
+          <StatusBadge status={deliverable.status} />
+        </div>
+        {(deliverable.content || deliverable.file_url) && (
+          <Button variant="outline" size="sm" className="w-full mt-3" onClick={onView}>
+            <Eye className="w-4 h-4 mr-2" />
+            View Content
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -438,106 +835,7 @@ function JobCard({ workflow }: { workflow: Workflow }) {
           {deliverableCount > 0 && (
             <span className="flex items-center gap-1 text-green-600">
               <FileText className="w-4 h-4" />
-              {deliverableCount} {deliverableCount === 1 ? "deliverable" : "deliverables"}
-            </span>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// Deliverable Card Component
-function DeliverableCard({ deliverable, onView }: { deliverable: Deliverable; onView: () => void }) {
-  return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1 flex-1 min-w-0">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="w-4 h-4 text-primary flex-shrink-0" />
-              <span className="truncate">{deliverable.name}</span>
-            </CardTitle>
-            {deliverable.description && (
-              <CardDescription className="line-clamp-2">
-                {deliverable.description}
-              </CardDescription>
-            )}
-          </div>
-          <StatusBadge status={deliverable.status} />
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Clock className="w-4 h-4" />
-              {formatDistanceToNow(new Date(deliverable.created_at), { addSuffix: true })}
-            </span>
-            {deliverable.workflow && (
-              <p className="mt-1 text-xs">From: {deliverable.workflow.name}</p>
-            )}
-          </div>
-          {(deliverable.content || deliverable.file_url) && (
-            <Button variant="outline" size="sm" onClick={onView}>
-              <Eye className="w-4 h-4 mr-2" />
-              View
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// Automation Card Component
-function AutomationCard({ automation }: { automation: Workflow }) {
-  const triggerLabels: Record<string, string> = {
-    manual: "Run on demand",
-    scheduled: "Runs on schedule",
-    webhook: "Triggered by webhook",
-    email: "Triggered by email",
-  };
-
-  const scheduleLabels: Record<string, string> = {
-    "manual": "",
-    "0 * * * *": "Every hour",
-    "0 0 * * *": "Daily at midnight",
-    "0 9 * * 1-5": "Weekdays at 9am",
-    "0 0 * * 0": "Weekly on Sunday",
-  };
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Bot className="w-4 h-4 text-purple-500" />
-              {automation.name}
-            </CardTitle>
-            <CardDescription>
-              {triggerLabels[automation.automation_trigger || "manual"]}
-              {automation.automation_schedule && scheduleLabels[automation.automation_schedule] && (
-                <> - {scheduleLabels[automation.automation_schedule]}</>
-              )}
-            </CardDescription>
-          </div>
-          <StatusBadge status={automation.automation_status || "inactive"} />
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          {automation.last_run_at && (
-            <span className="flex items-center gap-1">
-              <Clock className="w-4 h-4" />
-              Last run: {formatDistanceToNow(new Date(automation.last_run_at), { addSuffix: true })}
-            </span>
-          )}
-          {automation.run_count !== undefined && automation.run_count > 0 && (
-            <span className="flex items-center gap-1">
-              <Play className="w-4 h-4" />
-              {automation.run_count} {automation.run_count === 1 ? "run" : "runs"}
+              {deliverableCount} {deliverableCount === 1 ? "result" : "results"}
             </span>
           )}
         </div>
