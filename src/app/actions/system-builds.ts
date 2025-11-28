@@ -37,6 +37,20 @@ export async function getSystemBuild(id: string) {
 export async function createSystemBuild(title: string, prompt: string, projectId?: string) {
   const supabase = await createSupabaseClient();
 
+  // If building from a project, auto-assign the project's client
+  let clientId: string | null = null;
+  if (projectId) {
+    const { data: project } = await supabase
+      .from("projects")
+      .select("client_id")
+      .eq("id", projectId)
+      .single();
+
+    if (project?.client_id) {
+      clientId = project.client_id;
+    }
+  }
+
   const { data, error } = await supabase
     .from("system_builds")
     .insert([
@@ -44,6 +58,7 @@ export async function createSystemBuild(title: string, prompt: string, projectId
         title,
         prompt,
         project_id: projectId || null,
+        client_id: clientId,
         status: "pending",
         result: null,
       },
@@ -59,6 +74,9 @@ export async function createSystemBuild(title: string, prompt: string, projectId
   revalidatePath("/system-builder");
   if (projectId) {
     revalidatePath(`/projects/${projectId}`);
+  }
+  if (clientId) {
+    revalidatePath(`/clients/${clientId}`);
   }
   return data as SystemBuild;
 }
