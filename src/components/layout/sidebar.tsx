@@ -13,6 +13,11 @@ import {
   X,
   Sparkles,
   Cpu,
+  BarChart3,
+  Activity,
+  History,
+  Plug,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,12 +25,23 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-const navigation = [
+const mainNav = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "AI Workspace", href: "/workspace", icon: Sparkles },
   { name: "Clients", href: "/clients", icon: Users },
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Audit Requests", href: "/audits", icon: ClipboardList },
+];
+
+const toolsNav = [
+  { name: "Analytics", href: "/analytics", icon: BarChart3 },
+  { name: "Integrations", href: "/integrations", icon: Plug },
+  { name: "Reports", href: "/reports", icon: FileText },
+];
+
+const systemNav = [
+  { name: "System Health", href: "/system-health", icon: Activity },
+  { name: "Audit Log", href: "/audit-log", icon: History },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -86,26 +102,85 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-4">
-          {navigation.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
-                  isActive
-                    ? "bg-[hsl(var(--sidebar-accent))] text-[hsl(var(--sidebar-bg))] shadow-lg"
-                    : "opacity-80 hover:opacity-100 hover:bg-[hsl(var(--sidebar-accent)/0.1)]"
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.name}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
+          {/* Main Section */}
+          <div className="space-y-1">
+            {mainNav.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+                    isActive
+                      ? "bg-[hsl(var(--sidebar-accent))] text-[hsl(var(--sidebar-bg))] shadow-lg"
+                      : "opacity-80 hover:opacity-100 hover:bg-[hsl(var(--sidebar-accent)/0.1)]"
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  {item.name}
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Tools Section */}
+          <div className="mt-6">
+            <p className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider opacity-50">
+              Tools
+            </p>
+            <div className="space-y-1">
+              {toolsNav.map((item) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+                      isActive
+                        ? "bg-[hsl(var(--sidebar-accent))] text-[hsl(var(--sidebar-bg))] shadow-lg"
+                        : "opacity-80 hover:opacity-100 hover:bg-[hsl(var(--sidebar-accent)/0.1)]"
+                    )}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* System Section */}
+          <div className="mt-6">
+            <p className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider opacity-50">
+              System
+            </p>
+            <div className="space-y-1">
+              {systemNav.map((item) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+                      isActive
+                        ? "bg-[hsl(var(--sidebar-accent))] text-[hsl(var(--sidebar-bg))] shadow-lg"
+                        : "opacity-80 hover:opacity-100 hover:bg-[hsl(var(--sidebar-accent)/0.1)]"
+                    )}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
         </nav>
 
         <div className="border-t border-[hsl(var(--sidebar-border))]" />

@@ -514,3 +514,306 @@ export interface WebhookEvent {
   error_message?: string;
   created_at: string;
 }
+
+// ============================================
+// CLIENT THEME CUSTOMIZATION
+// ============================================
+
+export interface ClientTheme {
+  id: string;
+  client_id: string;
+
+  // Color Settings
+  primary_color: string;
+  secondary_color: string;
+  accent_color: string;
+  background_color: string;
+  surface_color: string;
+  text_color: string;
+  text_muted_color: string;
+  border_color: string;
+  success_color: string;
+  warning_color: string;
+  error_color: string;
+
+  // Dark Mode Colors
+  dark_background_color: string;
+  dark_surface_color: string;
+  dark_text_color: string;
+  dark_text_muted_color: string;
+  dark_border_color: string;
+
+  // Branding
+  logo_url?: string;
+  logo_dark_url?: string;
+  favicon_url?: string;
+  company_name?: string;
+
+  // Typography
+  font_family: string;
+  heading_font_family: string;
+  font_size_base: number;
+  border_radius: number;
+
+  // Layout Preferences
+  sidebar_style: "default" | "compact" | "minimal";
+  header_style: "default" | "minimal" | "branded";
+  card_style: "default" | "bordered" | "elevated" | "flat";
+
+  // Feature Toggles
+  show_powered_by: boolean;
+  custom_css?: string;
+
+  // Metadata
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+
+  // Relations
+  client?: Client;
+}
+
+export interface ThemePreset {
+  id: string;
+  name: string;
+  description?: string;
+  preview_image_url?: string;
+
+  // Color Settings
+  primary_color: string;
+  secondary_color: string;
+  accent_color: string;
+  background_color: string;
+  surface_color: string;
+  text_color: string;
+  text_muted_color: string;
+  border_color: string;
+  success_color: string;
+  warning_color: string;
+  error_color: string;
+
+  // Dark Mode Colors
+  dark_background_color: string;
+  dark_surface_color: string;
+  dark_text_color: string;
+  dark_text_muted_color: string;
+  dark_border_color: string;
+
+  // Settings
+  font_family: string;
+  border_radius: number;
+
+  // Metadata
+  is_default: boolean;
+  is_public: boolean;
+  created_by?: string;
+  created_at: string;
+}
+
+// ============================================
+// ADMIN ACTIVITY AUDIT LOG
+// ============================================
+
+export type AuditSeverity = "info" | "warning" | "critical";
+export type AuditResourceType = "client" | "project" | "automation" | "settings" | "billing" | "team" | "integration" | "api_key" | "user";
+
+export interface AdminAuditLog {
+  id: string;
+  user_id: string;
+  user_email?: string;
+  action: string;
+  resource_type: AuditResourceType;
+  resource_id?: string;
+  resource_name?: string;
+  description?: string;
+  metadata: Record<string, unknown>;
+  ip_address?: string;
+  user_agent?: string;
+  severity: AuditSeverity;
+  created_at: string;
+}
+
+// ============================================
+// SYSTEM HEALTH & MONITORING
+// ============================================
+
+export type HealthStatus = "healthy" | "degraded" | "down";
+
+export interface SystemHealthCheck {
+  id: string;
+  service_name: string;
+  status: HealthStatus;
+  response_time_ms?: number;
+  last_check_at: string;
+  error_message?: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface SystemMetric {
+  id: string;
+  metric_name: string;
+  metric_value: number;
+  metric_unit?: string;
+  tags: Record<string, unknown>;
+  recorded_at: string;
+}
+
+// ============================================
+// INTEGRATION HUB
+// ============================================
+
+export type IntegrationType = "api" | "webhook" | "oauth" | "database";
+export type IntegrationStatus = "active" | "inactive" | "error";
+export type IntegrationProvider = "stripe" | "airtable" | "n8n" | "slack" | "zapier" | "hubspot" | "salesforce" | "google" | "custom";
+
+export interface Integration {
+  id: string;
+  name: string;
+  type: IntegrationType;
+  provider: string;
+  description?: string;
+  icon_url?: string;
+
+  // Configuration
+  config: Record<string, unknown>;
+  credentials: Record<string, unknown>;
+
+  // Status
+  status: IntegrationStatus;
+  last_sync_at?: string;
+  last_error?: string;
+  error_count: number;
+
+  // Usage
+  total_calls: number;
+  successful_calls: number;
+  failed_calls: number;
+
+  // Metadata
+  is_global: boolean;
+  client_id?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+
+  // Relations
+  client?: Client;
+}
+
+export type IntegrationLogDirection = "inbound" | "outbound";
+export type IntegrationLogStatus = "success" | "failed" | "pending";
+
+export interface IntegrationLog {
+  id: string;
+  integration_id: string;
+  action: string;
+  direction: IntegrationLogDirection;
+  status: IntegrationLogStatus;
+  request_data?: Record<string, unknown>;
+  response_data?: Record<string, unknown>;
+  error_message?: string;
+  duration_ms?: number;
+  created_at: string;
+
+  // Relations
+  integration?: Integration;
+}
+
+// ============================================
+// REPORTS & EXPORTS
+// ============================================
+
+export type ReportType = "analytics" | "billing" | "usage" | "performance" | "client" | "automation";
+export type ScheduleType = "daily" | "weekly" | "monthly" | "quarterly";
+export type ExportFormat = "pdf" | "csv" | "excel" | "json";
+export type ExportStatus = "pending" | "processing" | "completed" | "failed";
+
+export interface ScheduledReport {
+  id: string;
+  name: string;
+  description?: string;
+  report_type: ReportType;
+
+  // Schedule
+  schedule_type: ScheduleType;
+  schedule_day?: number;
+  schedule_time: string;
+  timezone: string;
+
+  // Configuration
+  config: Record<string, unknown>;
+  filters: Record<string, unknown>;
+  format: ExportFormat;
+
+  // Recipients
+  recipients: string[];
+
+  // Status
+  is_active: boolean;
+  last_run_at?: string;
+  next_run_at?: string;
+  last_error?: string;
+
+  // Metadata
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReportExport {
+  id: string;
+  report_type: ReportType;
+  name: string;
+  description?: string;
+
+  // Export Configuration
+  format: ExportFormat;
+  filters: Record<string, unknown>;
+
+  // File Info
+  file_url?: string;
+  file_size_bytes?: number;
+  row_count?: number;
+
+  // Status
+  status: ExportStatus;
+  started_at?: string;
+  completed_at?: string;
+  error_message?: string;
+
+  // Metadata
+  created_by?: string;
+  created_at: string;
+}
+
+// ============================================
+// DASHBOARD METRICS CACHE
+// ============================================
+
+export interface DashboardMetricsCache {
+  id: string;
+  metric_type: string;
+  metric_data: Record<string, unknown>;
+  calculated_at: string;
+  expires_at: string;
+}
+
+// ============================================
+// API KEY USAGE
+// ============================================
+
+export interface ApiKeyUsage {
+  id: string;
+  api_key_id: string;
+  endpoint: string;
+  method: string;
+  status_code?: number;
+  response_time_ms?: number;
+  ip_address?: string;
+  user_agent?: string;
+  created_at: string;
+
+  // Relations
+  api_key?: ApiKey;
+}
