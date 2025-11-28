@@ -32,6 +32,25 @@ export interface Audit {
   updated_at: string;
 }
 
+export type AutomationStatus = "pending" | "active" | "paused" | "error" | "archived";
+export type AutomationType = "webhook" | "scheduled" | "manual" | "api";
+
+export interface AutomationConfig {
+  // Webhook config
+  externalWebhookUrl?: string;
+  headers?: Record<string, string>;
+  // Scheduled config
+  schedule?: string; // cron expression
+  timezone?: string;
+  // General config
+  retryOnFailure?: boolean;
+  maxRetries?: number;
+  timeout?: number;
+  // n8n/external integration
+  n8nWorkflowId?: string;
+  n8nWebhookUrl?: string;
+}
+
 export interface SystemBuild {
   id: string;
   project_id: string | null;
@@ -41,6 +60,17 @@ export interface SystemBuild {
   result: SystemBuildResult | null;
   actions: SystemAction[];
   status: "pending" | "processing" | "completed" | "failed";
+  // Automation fields
+  automation_status: AutomationStatus;
+  automation_type: AutomationType;
+  automation_config: AutomationConfig;
+  webhook_url: string | null;
+  webhook_secret: string | null;
+  last_run_at: string | null;
+  run_count: number;
+  error_count: number;
+  last_error: string | null;
+  // Timestamps
   created_at: string;
   updated_at: string;
   project?: Project;
@@ -258,4 +288,54 @@ export interface SystemActivity {
   description: string;
   metadata: Record<string, unknown>;
   created_at: string;
+}
+
+// Automation Platform Types
+export type RunStatus = "running" | "success" | "failed" | "cancelled";
+export type TriggerType = "webhook" | "scheduled" | "manual" | "api";
+export type LogLevel = "debug" | "info" | "warn" | "error";
+
+export interface AutomationRun {
+  id: string;
+  system_id: string;
+  client_id: string | null;
+  status: RunStatus;
+  trigger_type: TriggerType;
+  input_data: Record<string, unknown>;
+  output_data: Record<string, unknown>;
+  started_at: string;
+  completed_at: string | null;
+  duration_ms: number | null;
+  error_message: string | null;
+  error_details: Record<string, unknown> | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  system?: SystemBuild;
+}
+
+export interface AutomationLog {
+  id: string;
+  run_id: string;
+  system_id: string;
+  level: LogLevel;
+  message: string;
+  data: Record<string, unknown>;
+  step_name: string | null;
+  step_index: number | null;
+  created_at: string;
+}
+
+export interface AutomationMetrics {
+  id: string;
+  system_id: string;
+  client_id: string | null;
+  metric_date: string;
+  total_runs: number;
+  successful_runs: number;
+  failed_runs: number;
+  avg_duration_ms: number | null;
+  min_duration_ms: number | null;
+  max_duration_ms: number | null;
+  created_at: string;
+  updated_at: string;
 }
