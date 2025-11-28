@@ -122,7 +122,17 @@ ALTER TABLE automation_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE automation_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE automation_metrics ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
+-- Drop existing policies if they exist (for re-running migration)
+DROP POLICY IF EXISTS "Authenticated users can manage automation runs" ON automation_runs;
+DROP POLICY IF EXISTS "Authenticated users can manage automation logs" ON automation_logs;
+DROP POLICY IF EXISTS "Authenticated users can manage automation metrics" ON automation_metrics;
+DROP POLICY IF EXISTS "Anonymous can insert automation runs via webhook" ON automation_runs;
+DROP POLICY IF EXISTS "Anonymous can insert automation logs via webhook" ON automation_logs;
+DROP POLICY IF EXISTS "Service role full access to automation_runs" ON automation_runs;
+DROP POLICY IF EXISTS "Service role full access to automation_logs" ON automation_logs;
+DROP POLICY IF EXISTS "Service role full access to automation_metrics" ON automation_metrics;
+
+-- RLS Policies for authenticated users
 CREATE POLICY "Authenticated users can manage automation runs" ON automation_runs
     FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
@@ -132,12 +142,22 @@ CREATE POLICY "Authenticated users can manage automation logs" ON automation_log
 CREATE POLICY "Authenticated users can manage automation metrics" ON automation_metrics
     FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
--- Anonymous access for webhooks (read-only on specific tables)
+-- Anonymous access for webhooks
 CREATE POLICY "Anonymous can insert automation runs via webhook" ON automation_runs
     FOR INSERT TO anon WITH CHECK (true);
 
 CREATE POLICY "Anonymous can insert automation logs via webhook" ON automation_logs
     FOR INSERT TO anon WITH CHECK (true);
+
+-- Service role has full access (for API routes using service role key)
+CREATE POLICY "Service role full access to automation_runs" ON automation_runs
+    FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "Service role full access to automation_logs" ON automation_logs
+    FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "Service role full access to automation_metrics" ON automation_metrics
+    FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- Function to update automation metrics after a run
 CREATE OR REPLACE FUNCTION update_automation_metrics()
