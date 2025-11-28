@@ -117,3 +117,47 @@ export async function deleteSystemBuild(id: string) {
 
   revalidatePath("/system-builder");
 }
+
+export async function assignClientToSystem(systemId: string, clientId: string | null) {
+  const supabase = await createSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("system_builds")
+    .update({
+      client_id: clientId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", systemId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error assigning client to system:", error);
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/system-builder");
+  return data as SystemBuild;
+}
+
+export async function updateSystemActions(systemId: string, actions: SystemBuild["actions"]) {
+  const supabase = await createSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("system_builds")
+    .update({
+      actions,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", systemId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating system actions:", error);
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/system-builder");
+  return data as SystemBuild;
+}

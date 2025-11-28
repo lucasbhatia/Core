@@ -53,6 +53,28 @@ Your response must be a valid JSON object with the following structure:
   ],
   "implementationChecklist": [
     {"id": 1, "task": "Task description", "details": "Specific steps to complete this task", "category": "Setup|Configuration|Testing|Deployment"}
+  ],
+  "portalActions": [
+    {
+      "id": "unique-action-id (lowercase with hyphens)",
+      "label": "Action button label (e.g., Add New Lead)",
+      "icon": "plus-circle|bar-chart|send|message-square|zap",
+      "type": "form|dashboard|trigger|ai_chat",
+      "description": "Brief description of what this action does",
+      "fields": [
+        {
+          "name": "field_name",
+          "label": "Field Label",
+          "type": "text|textarea|email|tel|number|select|date",
+          "placeholder": "Placeholder text",
+          "required": true,
+          "options": [{"value": "opt1", "label": "Option 1"}]
+        }
+      ],
+      "aiPrompt": "The AI prompt to process this action's input. Use {{field_name}} for variables.",
+      "dataSource": "For dashboard type: what data to show",
+      "triggerAction": "For trigger type: what action to perform"
+    }
   ]
 }
 
@@ -63,6 +85,12 @@ CRITICAL INSTRUCTIONS:
 4. Email templates should be professional and ready to use
 5. Be specific and detailed - avoid generic placeholder text
 6. Include at least 2-3 items in each array where relevant to the request
+7. IMPORTANT: portalActions are the client-facing buttons/actions they'll see in their portal
+   - Generate 3-5 relevant actions based on what the system does
+   - "form" type needs fields array and aiPrompt
+   - "dashboard" type shows data/analytics
+   - "trigger" type is a one-click action
+   - "ai_chat" type lets user chat with AI about this topic
 
 Your response must be ONLY the JSON object, no additional text or markdown.`;
 
@@ -141,17 +169,24 @@ export async function POST(req: Request) {
       };
     }
 
-    // Save result
+    // Extract portal actions from result
+    const portalActions = result.portalActions || [];
+
+    // Remove portalActions from result to keep it clean (actions stored separately)
+    const { portalActions: _, ...cleanResult } = result;
+
+    // Save result and actions
     if (buildId) {
       const supabase = getSupabase();
       await supabase.from("system_builds").update({
-        result,
+        result: cleanResult,
+        actions: portalActions,
         status: "completed",
         updated_at: new Date().toISOString(),
       }).eq("id", buildId);
     }
 
-    return NextResponse.json({ result });
+    return NextResponse.json({ result: cleanResult, actions: portalActions });
 
   } catch (error) {
     console.error("System Builder error:", error);
