@@ -16,8 +16,23 @@ async function getSystemBuilds() {
   return data;
 }
 
+async function getClients() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("clients")
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching clients:", error);
+    return [];
+  }
+
+  return data;
+}
+
 export default async function SystemBuilderPage() {
-  const builds = await getSystemBuilds();
+  const [builds, clients] = await Promise.all([getSystemBuilds(), getClients()]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -28,7 +43,7 @@ export default async function SystemBuilderPage() {
         </p>
       </div>
 
-      <SystemBuilderClient initialBuilds={builds} />
+      <SystemBuilderClient initialBuilds={builds} clients={clients} />
     </div>
   );
 }

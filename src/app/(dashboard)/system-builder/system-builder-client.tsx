@@ -32,6 +32,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Cpu,
   Loader2,
   Sparkles,
@@ -49,17 +56,22 @@ import {
   Check,
   Download,
   Zap,
+  Users,
+  PlusCircle,
+  BarChart3,
+  Send,
 } from "lucide-react";
-import { createSystemBuild, deleteSystemBuild } from "@/app/actions/system-builds";
+import { createSystemBuild, deleteSystemBuild, assignClientToSystem } from "@/app/actions/system-builds";
 import { useToast } from "@/components/ui/use-toast";
 import { formatDateTime } from "@/lib/utils";
-import type { SystemBuild, SystemBuildResult } from "@/types/database";
+import type { SystemBuild, SystemBuildResult, Client, SystemAction } from "@/types/database";
 
 interface SystemBuilderClientProps {
   initialBuilds: SystemBuild[];
+  clients: Client[];
 }
 
-export function SystemBuilderClient({ initialBuilds }: SystemBuilderClientProps) {
+export function SystemBuilderClient({ initialBuilds, clients }: SystemBuilderClientProps) {
   const [builds, setBuilds] = useState(initialBuilds);
   const [title, setTitle] = useState("");
   const [prompt, setPrompt] = useState("");
@@ -101,11 +113,11 @@ export function SystemBuilderClient({ initialBuilds }: SystemBuilderClientProps)
 
       const data = await response.json();
 
-      // Update the build with the result
+      // Update the build with the result and actions
       setBuilds((prevBuilds) =>
         prevBuilds.map((b) =>
           b.id === newBuild.id
-            ? { ...b, result: data.result, status: "completed" }
+            ? { ...b, result: data.result, actions: data.actions || [], status: "completed" }
             : b
         )
       );
@@ -316,6 +328,31 @@ export function SystemBuilderClient({ initialBuilds }: SystemBuilderClientProps)
               Generated on {selectedBuild && formatDateTime(selectedBuild.created_at)}
             </DialogDescription>
           </DialogHeader>
+
+          {/* Client Assignment */}
+          {selectedBuild && (
+            <ClientAssignment
+              systemId={selectedBuild.id}
+              currentClientId={selectedBuild.client_id}
+              clients={clients}
+              onAssign={(clientId) => {
+                setBuilds((prevBuilds) =>
+                  prevBuilds.map((b) =>
+                    b.id === selectedBuild.id
+                      ? { ...b, client_id: clientId }
+                      : b
+                  )
+                );
+                setSelectedBuild({ ...selectedBuild, client_id: clientId });
+              }}
+            />
+          )}
+
+          {/* Portal Actions Preview */}
+          {selectedBuild?.actions && selectedBuild.actions.length > 0 && (
+            <ActionsPreview actions={selectedBuild.actions} />
+          )}
+
           {selectedBuild?.result && (
             <SystemBuildResultView result={selectedBuild.result} />
           )}
@@ -797,5 +834,136 @@ function SystemBuildResultView({ result }: { result: SystemBuildResult }) {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+// Client Assignment Component
+interface ClientAssignmentProps {
+  systemId: string;
+  currentClientId: string | null;
+  clients: Client[];
+  onAssign: (clientId: string | null) => void;
+}
+
+function ClientAssignment({ systemId, currentClientId, clients, onAssign }: ClientAssignmentProps) {
+  const [isAssigning, setIsAssigning] = useState(false);
+  const { toast } = useToast();
+
+  async function handleAssign(clientId: string) {
+    setIsAssigning(true);
+    try {
+      const newClientId = clientId === "none" ? null : clientId;
+      await assignClientToSystem(systemId, newClientId);
+      onAssign(newClientId);
+      toast({
+        title: newClientId ? "Client assigned" : "Client removed",
+        description: newClientId
+          ? "The client can now access this system in their portal."
+          : "The system is no longer assigned to a client.",
+        variant: "success",
+      });
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to assign client. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAssigning(false);
+    }
+  }
+
+  const currentClient = clients.find((c) => c.id === currentClientId);
+
+  return (
+    <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+      <CardContent className="py-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+              <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="font-medium text-sm">Client Portal Access</p>
+              <p className="text-xs text-muted-foreground">
+                {currentClient
+                  ? `Assigned to ${currentClient.name} (${currentClient.company})`
+                  : "Not assigned to any client"}
+              </p>
+            </div>
+          </div>
+          <Select
+            value={currentClientId || "none"}
+            onValueChange={handleAssign}
+            disabled={isAssigning}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select client" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No client</SelectItem>
+              {clients.map((client) => (
+                <SelectItem key={client.id} value={client.id}>
+                  {client.name} ({client.company})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Actions Preview Component
+function ActionsPreview({ actions }: { actions: SystemAction[] }) {
+  const actionIcons: Record<string, React.ReactNode> = {
+    "plus-circle": <PlusCircle className="w-4 h-4" />,
+    "bar-chart": <BarChart3 className="w-4 h-4" />,
+    "send": <Send className="w-4 h-4" />,
+    "message-square": <MessageSquare className="w-4 h-4" />,
+    "zap": <Zap className="w-4 h-4" />,
+  };
+
+  const typeIcons: Record<string, React.ReactNode> = {
+    form: <PlusCircle className="w-4 h-4" />,
+    dashboard: <BarChart3 className="w-4 h-4" />,
+    trigger: <Send className="w-4 h-4" />,
+    ai_chat: <MessageSquare className="w-4 h-4" />,
+  };
+
+  return (
+    <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Zap className="w-4 h-4 text-green-600" />
+          Client Portal Actions ({actions.length})
+        </CardTitle>
+        <CardDescription className="text-xs">
+          These actions will be available to the client in their portal
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {actions.map((action) => (
+            <div
+              key={action.id}
+              className="flex items-center gap-3 p-2 bg-white dark:bg-gray-900 rounded-lg border"
+            >
+              <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded flex items-center justify-center">
+                {actionIcons[action.icon] || typeIcons[action.type] || <Zap className="w-4 h-4" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{action.label}</p>
+                <p className="text-xs text-muted-foreground truncate">{action.description}</p>
+              </div>
+              <Badge variant="outline" className="text-xs shrink-0">
+                {action.type}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
