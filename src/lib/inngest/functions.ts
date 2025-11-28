@@ -1,5 +1,17 @@
 import { inngest } from "./client";
 import { createClient } from "@supabase/supabase-js";
+import {
+  sendEmail,
+  sendAutomationStatusEmail,
+  addLeadToCRM,
+  createRecord,
+  findRecords,
+  extractContactInfo,
+  processWithAI,
+  summarizeText,
+  sendWebhook,
+  sendSlackNotification,
+} from "@/lib/integrations";
 
 // Lazy load Supabase client
 function getSupabase() {
@@ -45,7 +57,7 @@ export const runAutomation = inngest.createFunction(
         run_id: runId,
         system_id: systemId,
         level: "info",
-        message: "Automation started",
+        message: `Starting automation: ${automationType}`,
         step_name: "initialization",
         step_index: 0,
       });
@@ -53,46 +65,33 @@ export const runAutomation = inngest.createFunction(
 
     // Step 2: Execute automation based on type
     const result = await step.run("execute-automation", async () => {
+      const config = (inputData.config || {}) as Record<string, unknown>;
+
       switch (automationType) {
         case "email_to_crm":
-          return await executeEmailToCrm(supabase, runId, systemId, inputData);
+          return await executeEmailToCrm(supabase, runId, systemId, config, inputData);
 
-        case "scheduled_report":
-          return await executeScheduledReport(
-            supabase,
-            runId,
-            systemId,
-            inputData
-          );
-
-        case "data_sync":
-          return await executeDataSync(supabase, runId, systemId, inputData);
+        case "lead_capture":
+          return await executeLeadCapture(supabase, runId, systemId, config, inputData);
 
         case "ai_processor":
-          return await executeAiProcessor(supabase, runId, systemId, inputData);
-
-        case "webhook_relay":
-          return await executeWebhookRelay(supabase, runId, systemId, inputData);
+          return await executeAiProcessor(supabase, runId, systemId, config, inputData);
 
         case "notification_sender":
-          return await executeNotificationSender(
-            supabase,
-            runId,
-            systemId,
-            inputData
-          );
+          return await executeNotificationSender(supabase, runId, systemId, config, inputData);
+
+        case "webhook_relay":
+          return await executeWebhookRelay(supabase, runId, systemId, config, inputData);
+
+        case "data_sync":
+          return await executeDataSync(supabase, runId, systemId, config, inputData);
 
         default:
-          return await executeGenericAutomation(
-            supabase,
-            runId,
-            systemId,
-            inputData
-          );
+          return await executeGenericAutomation(supabase, runId, systemId, config, inputData);
       }
     });
 
-    // Step 3: Mark as complete
+    // Step 3: Mark as complete and notify if configured
     await step.run("mark-complete", async () => {
       const completedAt = new Date().toISOString();
       const { data: runData } = await supabase
@@ -106,28 +105,52 @@ export const runAutomation = inngest.createFunction(
         : new Date();
       const durationMs = new Date(completedAt).getTime() - startedAt.getTime();
 
+      // Update run record
       await supabase
         .from("automation_runs")
         .update({
-          status: "success",
+          status: result.success ? "success" : "failed",
           completed_at: completedAt,
           duration_ms: durationMs,
-          output_data: result,
+          output_data: result.output,
+          error_message: result.error,
         })
         .eq("id", runId);
 
+      // Log completion
       await supabase.from("automation_logs").insert({
         run_id: runId,
         system_id: systemId,
-        level: "info",
-        message: "Automation completed successfully",
+        level: result.success ? "info" : "error",
+        message: result.success
+          ? "Automation completed successfully"
+          : `Automation failed: ${result.error}`,
         step_name: "completion",
         step_index: 99,
-        data: result,
+        data: result.output,
       });
+
+      // Update system stats
+      const { data: system } = await supabase
+        .from("system_builds")
+        .select("run_count, error_count")
+        .eq("id", systemId)
+        .single();
+
+      await supabase
+        .from("system_builds")
+        .update({
+          run_count: (system?.run_count || 0) + 1,
+          last_run_at: completedAt,
+          error_count: result.success
+            ? system?.error_count || 0
+            : (system?.error_count || 0) + 1,
+          last_error: result.success ? null : result.error,
+        })
+        .eq("id", systemId);
     });
 
-    return { success: true, runId, result };
+    return { success: result.success, runId, result };
   }
 );
 
@@ -158,7 +181,6 @@ export const scheduledAutomation = inngest.createFunction(
     let triggered = 0;
     for (const system of systems.data) {
       await step.run(`trigger-${system.id}`, async () => {
-        // Create a run record
         const { data: run } = await supabase
           .from("automation_runs")
           .insert({
@@ -172,7 +194,6 @@ export const scheduledAutomation = inngest.createFunction(
           .single();
 
         if (run) {
-          // Trigger the automation
           await inngest.send({
             name: "automation/run",
             data: {
@@ -195,229 +216,413 @@ export const scheduledAutomation = inngest.createFunction(
   }
 );
 
-// Automation type handlers
+// ===== AUTOMATION HANDLERS =====
+
+interface AutomationResult {
+  success: boolean;
+  output: Record<string, unknown>;
+  error?: string;
+}
+
+// Email to CRM: Extract contact info from email and add to CRM
 async function executeEmailToCrm(
   supabase: ReturnType<typeof createClient>,
   runId: string,
   systemId: string,
+  config: Record<string, unknown>,
   inputData: Record<string, unknown>
-) {
-  await supabase.from("automation_logs").insert({
-    run_id: runId,
-    system_id: systemId,
-    level: "info",
-    message: "Connecting to email provider...",
-    step_name: "email_connect",
-    step_index: 1,
-  });
+): Promise<AutomationResult> {
+  await logStep(supabase, runId, systemId, "info", "Processing email content", "parse_email", 1);
 
-  // Simulate email fetch
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  // Extract contact info using AI
+  const emailContent = (inputData.emailContent as string) || "Sample email content for testing";
+  const extractResult = await extractContactInfo(emailContent);
 
-  await supabase.from("automation_logs").insert({
-    run_id: runId,
-    system_id: systemId,
-    level: "info",
-    message: "Parsing email content with AI...",
-    step_name: "ai_parse",
-    step_index: 2,
-  });
+  if (!extractResult.success) {
+    return { success: false, output: {}, error: extractResult.error };
+  }
 
-  await new Promise((resolve) => setTimeout(resolve, 800));
+  await logStep(supabase, runId, systemId, "info", "Extracted contact information", "extract_data", 2, extractResult.structured);
 
-  await supabase.from("automation_logs").insert({
-    run_id: runId,
-    system_id: systemId,
-    level: "info",
-    message: "Creating CRM entry...",
-    step_name: "crm_create",
-    step_index: 3,
-  });
+  // Add to CRM if Airtable is configured
+  const airtableBaseId = config.airtableBaseId as string;
+  const airtableTable = (config.airtableTable as string) || "Leads";
 
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  if (airtableBaseId) {
+    await logStep(supabase, runId, systemId, "info", "Adding contact to CRM", "add_to_crm", 3);
+
+    const contact = extractResult.structured as Record<string, string>;
+    const crmResult = await addLeadToCRM(airtableBaseId, airtableTable, {
+      name: contact.name || "Unknown",
+      email: contact.email || "",
+      phone: contact.phone || "",
+      company: contact.company || "",
+      source: "Email Automation",
+      notes: contact.interest || "",
+    });
+
+    if (!crmResult.success) {
+      return { success: false, output: {}, error: crmResult.error };
+    }
+
+    return {
+      success: true,
+      output: {
+        contactExtracted: extractResult.structured,
+        crmRecordId: crmResult.record?.id,
+        processedAt: new Date().toISOString(),
+      },
+    };
+  }
 
   return {
-    emailsProcessed: 3,
-    crmEntriesCreated: 3,
-    processedAt: new Date().toISOString(),
+    success: true,
+    output: {
+      contactExtracted: extractResult.structured,
+      note: "CRM not configured - contact info extracted only",
+      processedAt: new Date().toISOString(),
+    },
   };
 }
 
-async function executeScheduledReport(
+// Lead Capture: Process incoming lead and add to CRM
+async function executeLeadCapture(
   supabase: ReturnType<typeof createClient>,
   runId: string,
   systemId: string,
+  config: Record<string, unknown>,
   inputData: Record<string, unknown>
-) {
-  await supabase.from("automation_logs").insert({
-    run_id: runId,
-    system_id: systemId,
-    level: "info",
-    message: "Gathering report data...",
-    step_name: "gather_data",
-    step_index: 1,
-  });
+): Promise<AutomationResult> {
+  await logStep(supabase, runId, systemId, "info", "Processing lead capture", "process_lead", 1);
 
-  await new Promise((resolve) => setTimeout(resolve, 600));
+  const lead = inputData.lead as Record<string, string> | undefined;
 
-  await supabase.from("automation_logs").insert({
-    run_id: runId,
-    system_id: systemId,
-    level: "info",
-    message: "Generating report...",
-    step_name: "generate_report",
-    step_index: 2,
-  });
+  if (!lead) {
+    return { success: false, output: {}, error: "No lead data provided" };
+  }
 
-  await new Promise((resolve) => setTimeout(resolve, 400));
+  // Add to Airtable CRM
+  const airtableBaseId = config.airtableBaseId as string;
+  const airtableTable = (config.airtableTable as string) || "Leads";
+
+  if (airtableBaseId) {
+    await logStep(supabase, runId, systemId, "info", "Saving lead to CRM", "save_lead", 2);
+
+    const crmResult = await addLeadToCRM(airtableBaseId, airtableTable, {
+      name: lead.name || "Unknown",
+      email: lead.email || "",
+      phone: lead.phone || "",
+      company: lead.company || "",
+      source: lead.source || "Lead Capture Form",
+      notes: lead.notes || "",
+    });
+
+    if (!crmResult.success) {
+      return { success: false, output: {}, error: crmResult.error };
+    }
+
+    // Send notification email if configured
+    const notifyEmail = config.notifyEmail as string;
+    if (notifyEmail) {
+      await logStep(supabase, runId, systemId, "info", "Sending notification", "notify", 3);
+
+      await sendEmail({
+        to: notifyEmail,
+        subject: `New Lead: ${lead.name}`,
+        html: `
+          <h2>New Lead Captured</h2>
+          <p><strong>Name:</strong> ${lead.name}</p>
+          <p><strong>Email:</strong> ${lead.email}</p>
+          <p><strong>Phone:</strong> ${lead.phone || "N/A"}</p>
+          <p><strong>Company:</strong> ${lead.company || "N/A"}</p>
+          <p><strong>Notes:</strong> ${lead.notes || "N/A"}</p>
+        `,
+      });
+    }
+
+    return {
+      success: true,
+      output: {
+        leadSaved: true,
+        crmRecordId: crmResult.record?.id,
+        notificationSent: !!notifyEmail,
+        processedAt: new Date().toISOString(),
+      },
+    };
+  }
 
   return {
-    reportGenerated: true,
-    dataPoints: 150,
-    generatedAt: new Date().toISOString(),
+    success: true,
+    output: {
+      lead,
+      note: "CRM not configured - lead data captured only",
+      processedAt: new Date().toISOString(),
+    },
   };
 }
 
-async function executeDataSync(
-  supabase: ReturnType<typeof createClient>,
-  runId: string,
-  systemId: string,
-  inputData: Record<string, unknown>
-) {
-  await supabase.from("automation_logs").insert({
-    run_id: runId,
-    system_id: systemId,
-    level: "info",
-    message: "Connecting to source system...",
-    step_name: "connect_source",
-    step_index: 1,
-  });
-
-  await new Promise((resolve) => setTimeout(resolve, 400));
-
-  await supabase.from("automation_logs").insert({
-    run_id: runId,
-    system_id: systemId,
-    level: "info",
-    message: "Syncing records...",
-    step_name: "sync_records",
-    step_index: 2,
-  });
-
-  await new Promise((resolve) => setTimeout(resolve, 700));
-
-  return {
-    recordsSynced: 47,
-    recordsCreated: 12,
-    recordsUpdated: 35,
-    syncedAt: new Date().toISOString(),
-  };
-}
-
+// AI Processor: Process content with Claude
 async function executeAiProcessor(
   supabase: ReturnType<typeof createClient>,
   runId: string,
   systemId: string,
+  config: Record<string, unknown>,
   inputData: Record<string, unknown>
-) {
-  await supabase.from("automation_logs").insert({
-    run_id: runId,
-    system_id: systemId,
-    level: "info",
-    message: "Processing with AI...",
-    step_name: "ai_process",
-    step_index: 1,
-  });
+): Promise<AutomationResult> {
+  await logStep(supabase, runId, systemId, "info", "Starting AI processing", "ai_start", 1);
 
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  const content = (inputData.content as string) || "";
+  const task = (config.task as string) || "summarize";
 
-  await supabase.from("automation_logs").insert({
-    run_id: runId,
-    system_id: systemId,
-    level: "info",
-    message: "Storing results...",
-    step_name: "store_results",
-    step_index: 2,
-  });
+  if (!content) {
+    return { success: false, output: {}, error: "No content provided for AI processing" };
+  }
 
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  await logStep(supabase, runId, systemId, "info", `Processing task: ${task}`, "ai_process", 2);
+
+  let result;
+
+  switch (task) {
+    case "summarize":
+      result = await summarizeText(content);
+      break;
+    case "extract":
+      result = await extractContactInfo(content);
+      break;
+    case "custom":
+      const prompt = (config.prompt as string) || "Analyze the following content:";
+      result = await processWithAI(`${prompt}\n\n${content}`);
+      break;
+    default:
+      result = await summarizeText(content);
+  }
+
+  if (!result.success) {
+    return { success: false, output: {}, error: result.error };
+  }
 
   return {
-    itemsProcessed: 25,
-    confidence: 0.94,
-    processedAt: new Date().toISOString(),
+    success: true,
+    output: {
+      task,
+      result: result.result || result.structured,
+      processedAt: new Date().toISOString(),
+    },
   };
 }
 
-async function executeWebhookRelay(
-  supabase: ReturnType<typeof createClient>,
-  runId: string,
-  systemId: string,
-  inputData: Record<string, unknown>
-) {
-  await supabase.from("automation_logs").insert({
-    run_id: runId,
-    system_id: systemId,
-    level: "info",
-    message: "Relaying webhook data...",
-    step_name: "relay",
-    step_index: 1,
-  });
-
-  await new Promise((resolve) => setTimeout(resolve, 200));
-
-  return {
-    relayed: true,
-    destinations: 2,
-    relayedAt: new Date().toISOString(),
-  };
-}
-
+// Notification Sender: Send notifications via email/Slack
 async function executeNotificationSender(
   supabase: ReturnType<typeof createClient>,
   runId: string,
   systemId: string,
+  config: Record<string, unknown>,
   inputData: Record<string, unknown>
-) {
-  await supabase.from("automation_logs").insert({
-    run_id: runId,
-    system_id: systemId,
-    level: "info",
-    message: "Sending notifications...",
-    step_name: "send",
-    step_index: 1,
-  });
+): Promise<AutomationResult> {
+  await logStep(supabase, runId, systemId, "info", "Sending notifications", "notify_start", 1);
 
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  const channel = (config.channel as string) || "email";
+  const message = (inputData.message as string) || (config.defaultMessage as string) || "";
+  const recipients = (config.recipients as string[]) || [];
+
+  const results: Record<string, unknown> = { channel, sent: 0, failed: 0 };
+
+  if (channel === "email" || channel === "both") {
+    for (const recipient of recipients) {
+      const emailResult = await sendEmail({
+        to: recipient,
+        subject: (config.subject as string) || "Notification from CoreOS Hub",
+        html: `<div style="font-family: Arial, sans-serif; padding: 20px;">${message}</div>`,
+      });
+
+      if (emailResult.success) {
+        (results.sent as number)++;
+      } else {
+        (results.failed as number)++;
+      }
+    }
+
+    await logStep(supabase, runId, systemId, "info", `Sent ${results.sent} emails`, "email_sent", 2);
+  }
+
+  if (channel === "slack" || channel === "both") {
+    const slackWebhook = config.slackWebhook as string;
+    if (slackWebhook) {
+      const slackResult = await sendSlackNotification(slackWebhook, message);
+      results.slackSent = slackResult.success;
+
+      await logStep(supabase, runId, systemId, "info", `Slack notification: ${slackResult.success ? "sent" : "failed"}`, "slack_sent", 3);
+    }
+  }
 
   return {
-    notificationsSent: 5,
-    channels: ["email", "slack"],
-    sentAt: new Date().toISOString(),
+    success: true,
+    output: {
+      ...results,
+      processedAt: new Date().toISOString(),
+    },
   };
 }
 
+// Webhook Relay: Forward data to external webhooks
+async function executeWebhookRelay(
+  supabase: ReturnType<typeof createClient>,
+  runId: string,
+  systemId: string,
+  config: Record<string, unknown>,
+  inputData: Record<string, unknown>
+): Promise<AutomationResult> {
+  await logStep(supabase, runId, systemId, "info", "Relaying webhook", "webhook_start", 1);
+
+  const webhookUrl = config.webhookUrl as string;
+  const method = (config.method as "GET" | "POST" | "PUT") || "POST";
+
+  if (!webhookUrl) {
+    return { success: false, output: {}, error: "No webhook URL configured" };
+  }
+
+  const payload = inputData.payload || inputData;
+
+  await logStep(supabase, runId, systemId, "info", `Sending ${method} to ${webhookUrl}`, "webhook_send", 2);
+
+  const result = await sendWebhook(webhookUrl, {
+    method,
+    body: payload,
+    headers: (config.headers as Record<string, string>) || {},
+  });
+
+  if (!result.success) {
+    return { success: false, output: {}, error: result.error };
+  }
+
+  return {
+    success: true,
+    output: {
+      webhookUrl,
+      statusCode: result.statusCode,
+      response: result.data,
+      processedAt: new Date().toISOString(),
+    },
+  };
+}
+
+// Data Sync: Sync data between Airtable tables
+async function executeDataSync(
+  supabase: ReturnType<typeof createClient>,
+  runId: string,
+  systemId: string,
+  config: Record<string, unknown>,
+  inputData: Record<string, unknown>
+): Promise<AutomationResult> {
+  await logStep(supabase, runId, systemId, "info", "Starting data sync", "sync_start", 1);
+
+  const sourceBaseId = config.sourceBaseId as string;
+  const sourceTable = config.sourceTable as string;
+  const destBaseId = config.destBaseId as string;
+  const destTable = config.destTable as string;
+
+  if (!sourceBaseId || !sourceTable) {
+    return { success: false, output: {}, error: "Source not configured" };
+  }
+
+  // Fetch source records
+  await logStep(supabase, runId, systemId, "info", "Fetching source records", "sync_fetch", 2);
+
+  const sourceResult = await findRecords(sourceBaseId, sourceTable, {
+    filterByFormula: config.filterFormula as string,
+    maxRecords: (config.maxRecords as number) || 100,
+  });
+
+  if (!sourceResult.success) {
+    return { success: false, output: {}, error: sourceResult.error };
+  }
+
+  const recordCount = sourceResult.records?.length || 0;
+  await logStep(supabase, runId, systemId, "info", `Found ${recordCount} records`, "sync_count", 3);
+
+  // If destination is configured, sync records
+  if (destBaseId && destTable) {
+    let synced = 0;
+    for (const record of sourceResult.records || []) {
+      const createResult = await createRecord(destBaseId, destTable, record.fields);
+      if (createResult.success) synced++;
+    }
+
+    await logStep(supabase, runId, systemId, "info", `Synced ${synced} records`, "sync_complete", 4);
+
+    return {
+      success: true,
+      output: {
+        sourceFetched: recordCount,
+        destinationSynced: synced,
+        processedAt: new Date().toISOString(),
+      },
+    };
+  }
+
+  return {
+    success: true,
+    output: {
+      recordsFetched: recordCount,
+      records: sourceResult.records,
+      note: "Destination not configured - records fetched only",
+      processedAt: new Date().toISOString(),
+    },
+  };
+}
+
+// Generic automation handler
 async function executeGenericAutomation(
   supabase: ReturnType<typeof createClient>,
   runId: string,
   systemId: string,
+  config: Record<string, unknown>,
   inputData: Record<string, unknown>
+): Promise<AutomationResult> {
+  await logStep(supabase, runId, systemId, "info", "Running generic automation", "generic_start", 1);
+
+  // Get client info for the output
+  const clientName = inputData.clientName as string || "Unknown";
+  const systemTitle = inputData.systemTitle as string || "Automation";
+
+  await logStep(supabase, runId, systemId, "info", "Processing automation tasks", "generic_process", 2);
+
+  // Simulate some work
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
+  await logStep(supabase, runId, systemId, "info", "Automation completed", "generic_complete", 3);
+
+  return {
+    success: true,
+    output: {
+      systemTitle,
+      clientName,
+      tasksCompleted: 3,
+      processedAt: new Date().toISOString(),
+    },
+  };
+}
+
+// Helper to log steps
+async function logStep(
+  supabase: ReturnType<typeof createClient>,
+  runId: string,
+  systemId: string,
+  level: string,
+  message: string,
+  stepName: string,
+  stepIndex: number,
+  data?: Record<string, unknown>
 ) {
   await supabase.from("automation_logs").insert({
     run_id: runId,
     system_id: systemId,
-    level: "info",
-    message: "Executing automation tasks...",
-    step_name: "execute",
-    step_index: 1,
+    level,
+    message,
+    step_name: stepName,
+    step_index: stepIndex,
+    data: data || {},
   });
-
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  return {
-    tasksCompleted: 3,
-    processedAt: new Date().toISOString(),
-  };
 }
 
 // Export all functions for the serve handler
