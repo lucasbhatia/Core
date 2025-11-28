@@ -13,6 +13,12 @@ export default async function WorkspacePage() {
     redirect("/login");
   }
 
+  // Get all clients for the dropdown
+  const { data: clients } = await supabase
+    .from("clients")
+    .select("id, name, email, company")
+    .order("name", { ascending: true });
+
   // Get recent requests
   const { data: requests } = await supabase
     .from("requests")
@@ -24,18 +30,16 @@ export default async function WorkspacePage() {
     .order("created_at", { ascending: false })
     .limit(50);
 
-  // Get active workflows
+  // Get all workflows (including automations)
   const { data: workflows } = await supabase
     .from("workflows")
     .select(`
       *,
-      requests(id, subject, content),
-      clients(id, name, email),
+      requests(id, subject, content, client_id),
       agent_tasks(id, name, status, agent_id)
     `)
-    .in("status", ["running", "draft", "approved"])
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(50);
 
   // Get stats
   const { count: totalRequests } = await supabase
@@ -62,6 +66,7 @@ export default async function WorkspacePage() {
       initialRequests={requests || []}
       initialWorkflows={workflows || []}
       agents={agents || []}
+      clients={clients || []}
       stats={{
         totalRequests: totalRequests || 0,
         completedRequests: completedRequests || 0,

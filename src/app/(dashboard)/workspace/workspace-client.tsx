@@ -104,10 +104,18 @@ interface Agent {
   agent_type: string;
 }
 
+interface Client {
+  id: string;
+  name: string;
+  email: string;
+  company: string | null;
+}
+
 interface Props {
   initialRequests: Request[];
   initialWorkflows: WorkflowType[];
   agents: Agent[];
+  clients: Client[];
   stats: {
     totalRequests: number;
     completedRequests: number;
@@ -120,6 +128,7 @@ export function WorkspaceClient({
   initialRequests,
   initialWorkflows,
   agents,
+  clients,
   stats,
 }: Props) {
   const [requests, setRequests] = useState(initialRequests);
@@ -317,12 +326,26 @@ export function WorkspaceClient({
               </div>
               <div>
                 <label className="text-sm font-medium">Client (optional)</label>
+                <p className="text-xs text-muted-foreground mb-1.5">
+                  Link this request to a client so they can view it in their portal
+                </p>
                 <Select value={selectedClient} onValueChange={setSelectedClient}>
                   <SelectTrigger className="mt-1.5">
                     <SelectValue placeholder="Select a client" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">No client</SelectItem>
+                    {clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span>{client.name}</span>
+                          {client.company && (
+                            <span className="text-muted-foreground">({client.company})</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
