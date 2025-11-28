@@ -25,39 +25,104 @@ export const STRIPE_PRICES = {
 // Plan limits for local validation
 export const PLAN_LIMITS = {
   free: {
+    // Automations
     automations: 1,
     runs: 100,
     tokens: 10000,
     storage: 100,
     team: 1,
+    // AI Agents
+    agents: 1,
+    agent_executions: 50,
+    agent_tokens: 10000,
+    agent_conversations: 5,
+    agent_features: {
+      api_access: false,
+      webhooks: false,
+      scheduled_runs: false,
+      custom_agents: false,
+      advanced_models: false,
+    },
   },
   starter: {
+    // Automations
     automations: 3,
     runs: 500,
     tokens: 50000,
     storage: 512,
     team: 1,
+    // AI Agents
+    agents: 5,
+    agent_executions: 500,
+    agent_tokens: 100000,
+    agent_conversations: 50,
+    agent_features: {
+      api_access: true,
+      webhooks: false,
+      scheduled_runs: false,
+      custom_agents: true,
+      advanced_models: false,
+    },
   },
   pro: {
+    // Automations
     automations: 15,
     runs: 5000,
     tokens: 100000,
     storage: 2048,
     team: 5,
+    // AI Agents
+    agents: 25,
+    agent_executions: 5000,
+    agent_tokens: 500000,
+    agent_conversations: 500,
+    agent_features: {
+      api_access: true,
+      webhooks: true,
+      scheduled_runs: true,
+      custom_agents: true,
+      advanced_models: true,
+    },
   },
   business: {
+    // Automations
     automations: 50,
     runs: 25000,
     tokens: 500000,
     storage: 10240,
     team: 15,
+    // AI Agents
+    agents: 100,
+    agent_executions: 25000,
+    agent_tokens: 2000000,
+    agent_conversations: 2500,
+    agent_features: {
+      api_access: true,
+      webhooks: true,
+      scheduled_runs: true,
+      custom_agents: true,
+      advanced_models: true,
+    },
   },
   enterprise: {
+    // Automations
     automations: -1, // unlimited
     runs: -1,
     tokens: -1,
     storage: -1,
     team: -1,
+    // AI Agents
+    agents: -1,
+    agent_executions: -1,
+    agent_tokens: -1,
+    agent_conversations: -1,
+    agent_features: {
+      api_access: true,
+      webhooks: true,
+      scheduled_runs: true,
+      custom_agents: true,
+      advanced_models: true,
+    },
   },
 };
 

@@ -817,3 +817,190 @@ export interface ApiKeyUsage {
   // Relations
   api_key?: ApiKey;
 }
+
+// ============================================
+// AI AGENTS
+// ============================================
+
+export type AgentStatus = "active" | "paused" | "error" | "draft";
+export type AgentCategory =
+  | "sales"
+  | "support"
+  | "marketing"
+  | "operations"
+  | "development"
+  | "hr"
+  | "finance"
+  | "legal"
+  | "research"
+  | "creative"
+  | "data"
+  | "custom";
+
+export interface DeployedAgent {
+  id: string;
+  client_id: string;
+  template_id: string | null;
+  name: string;
+  description: string | null;
+  icon: string;
+  category: AgentCategory;
+  capabilities: string[];
+  system_prompt: string;
+  model: string;
+  temperature: number;
+  max_tokens: number;
+  input_fields: AgentInputField[];
+  output_format: "text" | "markdown" | "json" | "html";
+  tools: string[];
+  integrations: AgentIntegration[];
+  is_public: boolean;
+  api_enabled: boolean;
+  webhook_url: string | null;
+  webhook_secret: string | null;
+  allowed_users: string[];
+  status: AgentStatus;
+  total_executions: number;
+  total_tokens_used: number;
+  avg_execution_time_ms: number | null;
+  last_execution_at: string | null;
+  error_count: number;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  client?: Client;
+}
+
+export interface AgentInputField {
+  name: string;
+  label: string;
+  type: "text" | "textarea" | "select" | "number" | "email" | "url" | "file" | "date" | "checkbox";
+  placeholder?: string;
+  required?: boolean;
+  default_value?: string;
+  options?: { value: string; label: string }[];
+}
+
+export interface AgentIntegration {
+  id: string;
+  type: "webhook" | "api" | "database" | "email" | "slack" | "custom";
+  name: string;
+  config: Record<string, unknown>;
+  is_active: boolean;
+}
+
+export type AgentExecutionStatus = "queued" | "running" | "success" | "failed" | "cancelled";
+export type AgentExecutionTrigger = "manual" | "api" | "webhook" | "scheduled" | "chat";
+
+export interface AgentExecution {
+  id: string;
+  agent_id: string;
+  client_id: string;
+  user_id: string | null;
+  status: AgentExecutionStatus;
+  trigger: AgentExecutionTrigger;
+  input_data: Record<string, unknown>;
+  output_data: Record<string, unknown> | null;
+  output_text: string | null;
+  started_at: string;
+  completed_at: string | null;
+  duration_ms: number | null;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  error_message: string | null;
+  error_details: Record<string, unknown> | null;
+  retry_count: number;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  agent?: DeployedAgent;
+}
+
+export interface AgentConversation {
+  id: string;
+  agent_id: string;
+  client_id: string;
+  user_id: string | null;
+  title: string | null;
+  is_active: boolean;
+  message_count: number;
+  total_tokens_used: number;
+  context: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  last_message_at: string | null;
+  agent?: DeployedAgent;
+  messages?: ConversationMessage[];
+}
+
+export interface ConversationMessage {
+  id: string;
+  conversation_id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  attachments: { type: "file" | "image" | "link"; url: string; name: string }[];
+  tokens_used: number;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface AgentUsage {
+  id: string;
+  client_id: string;
+  month: string;
+  agents_created: number;
+  agents_active: number;
+  total_executions: number;
+  successful_executions: number;
+  failed_executions: number;
+  total_tokens_used: number;
+  input_tokens_used: number;
+  output_tokens_used: number;
+  total_execution_time_ms: number;
+  avg_execution_time_ms: number | null;
+  conversations_started: number;
+  messages_sent: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentSchedule {
+  id: string;
+  agent_id: string;
+  client_id: string;
+  name: string;
+  description: string | null;
+  cron_expression: string;
+  timezone: string;
+  input_data: Record<string, unknown>;
+  is_active: boolean;
+  last_run_at: string | null;
+  next_run_at: string | null;
+  run_count: number;
+  error_count: number;
+  last_error: string | null;
+  notify_on_success: boolean;
+  notify_on_failure: boolean;
+  notification_emails: string[];
+  created_at: string;
+  updated_at: string;
+  agent?: DeployedAgent;
+}
+
+export interface AgentApiKey {
+  id: string;
+  client_id: string;
+  agent_id: string | null;
+  name: string;
+  key_hash: string;
+  key_prefix: string;
+  scopes: ("execute" | "read" | "write" | "admin")[];
+  rate_limit: number;
+  last_used_at: string | null;
+  total_requests: number;
+  is_active: boolean;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
