@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import PortalShell from "@/components/portal/portal-shell";
+import type { Client } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ import {
   Sparkles,
   Check,
   Lock,
+  Loader2,
 } from "lucide-react";
 import { agentTemplates, agentCategories, type AgentTemplate } from "@/lib/ai-agents/templates";
 
@@ -107,9 +109,28 @@ const categoryIcons: Record<string, React.ElementType> = {
 
 export default function AgentTemplatesPage() {
   const router = useRouter();
+  const [client, setClient] = useState<Client | null>(null);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [currentPlan] = useState("pro"); // This would come from the user's subscription
+
+  useEffect(() => {
+    const fetchClient = async () => {
+      try {
+        const res = await fetch("/api/portal/client");
+        if (res.ok) {
+          const data = await res.json();
+          setClient(data.client);
+        }
+      } catch (error) {
+        console.error("Error fetching client:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchClient();
+  }, []);
 
   const filteredTemplates = agentTemplates.filter((template) => {
     const matchesSearch =
@@ -138,8 +159,16 @@ export default function AgentTemplatesPage() {
 
   const popularTemplates = agentTemplates.filter((t) => t.popular);
 
+  if (loading || !client) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
-    <PortalShell pageTitle="Agent Templates">
+    <PortalShell client={client} pageTitle="Agent Templates">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

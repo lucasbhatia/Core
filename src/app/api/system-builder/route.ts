@@ -122,10 +122,22 @@ export async function POST(req: Request) {
       );
     }
 
-    // Update status to processing
+    // Update status to processing - check both workflows and system_builds tables
     if (buildId) {
       const supabase = getSupabase();
-      await supabase.from("system_builds").update({ status: "processing" }).eq("id", buildId);
+      // Try workflows table first (new system)
+      const { data: workflow } = await supabase
+        .from("workflows")
+        .select("id")
+        .eq("id", buildId)
+        .single();
+
+      if (workflow) {
+        await supabase.from("workflows").update({ status: "processing" }).eq("id", buildId);
+      } else {
+        // Fallback to system_builds for backwards compatibility
+        await supabase.from("system_builds").update({ status: "processing" }).eq("id", buildId);
+      }
     }
 
     // Call Claude API
@@ -175,15 +187,35 @@ export async function POST(req: Request) {
     // Remove portalActions from result to keep it clean (actions stored separately)
     const { portalActions: _, ...cleanResult } = result;
 
-    // Save result and actions
+    // Save result and actions - check both tables
     if (buildId) {
       const supabase = getSupabase();
-      await supabase.from("system_builds").update({
-        result: cleanResult,
-        actions: portalActions,
-        status: "completed",
-        updated_at: new Date().toISOString(),
-      }).eq("id", buildId);
+
+      // Try workflows table first (new system)
+      const { data: workflow } = await supabase
+        .from("workflows")
+        .select("id")
+        .eq("id", buildId)
+        .single();
+
+      if (workflow) {
+        // Save to workflows table with automation-specific fields
+        await supabase.from("workflows").update({
+          result: cleanResult,
+          steps: cleanResult.automationWorkflow?.steps || [],
+          total_steps: cleanResult.automationWorkflow?.steps?.length || 0,
+          status: "ready",
+          updated_at: new Date().toISOString(),
+        }).eq("id", buildId);
+      } else {
+        // Fallback to system_builds for backwards compatibility
+        await supabase.from("system_builds").update({
+          result: cleanResult,
+          actions: portalActions,
+          status: "completed",
+          updated_at: new Date().toISOString(),
+        }).eq("id", buildId);
+      }
     }
 
     return NextResponse.json({ result: cleanResult, actions: portalActions });
@@ -194,10 +226,25 @@ export async function POST(req: Request) {
     if (buildId) {
       try {
         const supabase = getSupabase();
-        await supabase.from("system_builds").update({
-          status: "failed",
-          updated_at: new Date().toISOString(),
-        }).eq("id", buildId);
+
+        // Try workflows table first
+        const { data: workflow } = await supabase
+          .from("workflows")
+          .select("id")
+          .eq("id", buildId)
+          .single();
+
+        if (workflow) {
+          await supabase.from("workflows").update({
+            status: "failed",
+            updated_at: new Date().toISOString(),
+          }).eq("id", buildId);
+        } else {
+          await supabase.from("system_builds").update({
+            status: "failed",
+            updated_at: new Date().toISOString(),
+          }).eq("id", buildId);
+        }
       } catch (e) {
         console.error("DB update failed:", e);
       }

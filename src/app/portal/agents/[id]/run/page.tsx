@@ -29,10 +29,12 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { type DeployedAgent, type AgentInputField } from "@/lib/ai-agents/types";
+import type { Client } from "@/types/database";
 
 export default function AgentRunPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [agent, setAgent] = useState<DeployedAgent | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [inputData, setInputData] = useState<Record<string, string>>({});
@@ -45,8 +47,21 @@ export default function AgentRunPage({ params }: { params: Promise<{ id: string 
   } | null>(null);
 
   useEffect(() => {
+    fetchClient();
     fetchAgent();
   }, [id]);
+
+  const fetchClient = async () => {
+    try {
+      const res = await fetch("/api/portal/client");
+      if (res.ok) {
+        const data = await res.json();
+        setClient(data.client);
+      }
+    } catch (error) {
+      console.error("Error fetching client:", error);
+    }
+  };
 
   const fetchAgent = async () => {
     try {
@@ -176,19 +191,17 @@ export default function AgentRunPage({ params }: { params: Promise<{ id: string 
     }
   };
 
-  if (loading) {
+  if (loading || !client) {
     return (
-      <PortalShell pageTitle="Run Agent">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </PortalShell>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   if (!agent) {
     return (
-      <PortalShell pageTitle="Agent Not Found">
+      <PortalShell client={client} pageTitle="Agent Not Found">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Bot className="h-12 w-12 text-muted-foreground mb-4" />
@@ -205,7 +218,7 @@ export default function AgentRunPage({ params }: { params: Promise<{ id: string 
   const inputFields = agent.input_fields || [];
 
   return (
-    <PortalShell pageTitle={`Run ${agent.name}`}>
+    <PortalShell client={client} pageTitle={`Run ${agent.name}`}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">

@@ -814,7 +814,11 @@ async function getClientPlan(clientId: string): Promise<string> {
     .single();
 
   if (data?.subscription_plans) {
-    return (data.subscription_plans as { name: string }).name.toLowerCase();
+    const plan = data.subscription_plans as unknown as { name: string } | { name: string }[];
+    if (Array.isArray(plan)) {
+      return plan[0]?.name?.toLowerCase() || "free";
+    }
+    return plan.name.toLowerCase();
   }
 
   return "free";

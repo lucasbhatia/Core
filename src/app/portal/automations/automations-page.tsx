@@ -41,13 +41,13 @@ import {
   Eye,
   Activity,
   CheckCircle,
-  XCircle,
   Calendar,
   Webhook,
   MousePointer,
   PlusCircle,
-  TrendingUp,
   AlertTriangle,
+  LayoutTemplate,
+  Copy,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
@@ -55,12 +55,14 @@ import { useToast } from "@/components/ui/use-toast";
 interface Automation {
   id: string;
   name: string;
+  description?: string;
   automation_status?: string;
   automation_trigger?: string;
   automation_type?: string;
   last_run_at?: string;
   run_count?: number;
   error_count?: number;
+  webhook_url?: string;
   result?: {
     systemOverview?: string;
   };
@@ -127,7 +129,7 @@ export default function AutomationsPage({ automations, clientId }: AutomationsPa
   async function handleToggleAutomation(automationId: string, currentStatus: string) {
     const newStatus = currentStatus === "active" ? "paused" : "active";
     try {
-      const response = await fetch("/api/workspace/automation/toggle", {
+      const response = await fetch("/api/portal/automation/toggle", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: automationId, status: newStatus }),
@@ -138,6 +140,13 @@ export default function AutomationsPage({ automations, clientId }: AutomationsPa
           title: newStatus === "active" ? "Automation activated" : "Automation paused",
         });
         window.location.reload();
+      } else {
+        const data = await response.json();
+        toast({
+          title: "Error",
+          description: data.error || "Failed to update automation",
+          variant: "destructive",
+        });
       }
     } catch {
       toast({
@@ -275,17 +284,25 @@ export default function AutomationsPage({ automations, clientId }: AutomationsPa
                 ? "No matching automations"
                 : "No automations yet"}
             </h3>
-            <p className="text-muted-foreground mb-6">
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
               {searchQuery || statusFilter !== "all"
                 ? "Try adjusting your filters"
-                : "Create your first automation to get started"}
+                : "Automations help you save time by running tasks automatically. Get started with a template or create your own."}
             </p>
-            <Button asChild>
-              <Link href="/portal/builder">
-                <PlusCircle className="w-4 h-4 mr-2" />
-                Create Automation
-              </Link>
-            </Button>
+            <div className="flex justify-center gap-3">
+              <Button asChild variant="outline">
+                <Link href="/portal/templates">
+                  <LayoutTemplate className="w-4 h-4 mr-2" />
+                  Browse Templates
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/portal/builder">
+                  <PlusCircle className="w-4 h-4 mr-2" />
+                  Create Custom
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
@@ -320,7 +337,7 @@ export default function AutomationsPage({ automations, clientId }: AutomationsPa
                     <div>
                       <CardTitle className="text-base">{automation.name}</CardTitle>
                       <CardDescription className="mt-1 line-clamp-2">
-                        {automation.result?.systemOverview || "Automation system"}
+                        {automation.description || automation.result?.systemOverview || "Automated workflow"}
                       </CardDescription>
                     </div>
                   </div>
@@ -484,7 +501,7 @@ export default function AutomationsPage({ automations, clientId }: AutomationsPa
                   {selectedAutomation.name}
                 </DialogTitle>
                 <DialogDescription>
-                  {selectedAutomation.result?.systemOverview || "Automation details"}
+                  {selectedAutomation.description || selectedAutomation.result?.systemOverview || "Automation details"}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
@@ -540,6 +557,31 @@ export default function AutomationsPage({ automations, clientId }: AutomationsPa
                     </p>
                   </div>
                 </div>
+
+                {/* Webhook URL if applicable */}
+                {selectedAutomation.automation_trigger === "webhook" && selectedAutomation.webhook_url && (
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm font-medium mb-2">Webhook URL</p>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 text-xs bg-white p-2 rounded border truncate">
+                        {selectedAutomation.webhook_url}
+                      </code>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(selectedAutomation.webhook_url || "");
+                          toast({ title: "Copied to clipboard" });
+                        }}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Send a POST request to this URL to trigger the automation
+                    </p>
+                  </div>
+                )}
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setSelectedAutomation(null)}>

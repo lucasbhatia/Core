@@ -42,6 +42,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Loader2 } from "lucide-react";
+import type { Client } from "@/types/database";
 
 // Icon mapping
 const iconMap: Record<string, React.ElementType> = {
@@ -107,7 +109,7 @@ export default function AgentsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [client, setClient] = useState<{ id: string; name: string; company: string } | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -115,21 +117,26 @@ export default function AgentsPage() {
 
   const fetchData = async () => {
     try {
-      const [agentsRes, usageRes] = await Promise.all([
+      const [agentsRes, usageRes, clientRes] = await Promise.all([
         fetch("/api/portal/agents"),
         fetch("/api/portal/agents/usage"),
+        fetch("/api/portal/client"),
       ]);
 
       if (agentsRes.ok) {
         const data = await agentsRes.json();
         setAgents(data.agents || []);
-        setClient(data.client);
       }
 
       if (usageRes.ok) {
         const data = await usageRes.json();
         setUsage(data.usage);
         setLimits(data.limits);
+      }
+
+      if (clientRes.ok) {
+        const data = await clientRes.json();
+        setClient(data.client);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -191,13 +198,11 @@ export default function AgentsPage() {
     return Math.min(Math.round((current / limit) * 100), 100);
   };
 
-  if (loading) {
+  if (loading || !client) {
     return (
-      <PortalShell client={client} pageTitle="AI Agents">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </PortalShell>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
