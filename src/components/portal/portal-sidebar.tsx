@@ -27,6 +27,7 @@ import {
   HelpCircle,
   Users,
   Sparkles,
+  UserPlus,
 } from "lucide-react";
 
 interface SidebarItem {
@@ -47,6 +48,7 @@ const sidebarGroups: SidebarGroup[] = [
     title: "Main",
     items: [
       { label: "Dashboard", href: "/portal", icon: LayoutDashboard },
+      { label: "AI Workforce", href: "/portal/workforce", icon: UserPlus, badge: "New" },
       { label: "My Automations", href: "/portal/automations", icon: Bot },
       { label: "Results Library", href: "/portal/deliverables", icon: FolderOpen },
     ],
@@ -54,7 +56,7 @@ const sidebarGroups: SidebarGroup[] = [
   {
     title: "Build",
     items: [
-      { label: "Create Automation", href: "/portal/builder", icon: PlusCircle, badge: "New" },
+      { label: "Create Automation", href: "/portal/builder", icon: PlusCircle },
       { label: "Templates", href: "/portal/templates", icon: Sparkles },
     ],
   },
