@@ -170,3 +170,77 @@ export async function getClientSystems(clientId: string) {
 
   return data;
 }
+
+// Get client's workflows/requests (from AI Workspace)
+export async function getClientWorkflows(clientId: string) {
+  const supabase = await createSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("workflows")
+    .select(`
+      *,
+      requests!inner(
+        id, content, source, subject, status, created_at, completed_at
+      ),
+      agent_tasks(count),
+      deliverables(count)
+    `)
+    .eq("requests.client_id", clientId)
+    .eq("is_automation", false)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.error("Error fetching client workflows:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+// Get client's automations (saved workflows)
+export async function getClientAutomations(clientId: string) {
+  const supabase = await createSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("workflows")
+    .select(`
+      *,
+      requests!inner(
+        id, content, source, subject
+      )
+    `)
+    .eq("requests.client_id", clientId)
+    .eq("is_automation", true)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching client automations:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+// Get client's deliverables
+export async function getClientDeliverables(clientId: string) {
+  const supabase = await createSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("deliverables")
+    .select(`
+      *,
+      workflow:workflows(name, status),
+      task:agent_tasks(name, agents(name, agent_type))
+    `)
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.error("Error fetching client deliverables:", error);
+    return [];
+  }
+
+  return data || [];
+}

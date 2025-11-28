@@ -1,5 +1,11 @@
 import { redirect } from "next/navigation";
-import { getPortalSession, getClientSystems } from "@/app/actions/portal-auth";
+import {
+  getPortalSession,
+  getClientSystems,
+  getClientWorkflows,
+  getClientAutomations,
+  getClientDeliverables,
+} from "@/app/actions/portal-auth";
 import PortalDashboard from "./portal-dashboard";
 
 export default async function PortalPage() {
@@ -9,12 +15,21 @@ export default async function PortalPage() {
     redirect("/portal/login");
   }
 
-  const systems = await getClientSystems(session.clientId);
+  // Fetch all data in parallel
+  const [systems, workflows, automations, deliverables] = await Promise.all([
+    getClientSystems(session.clientId),
+    getClientWorkflows(session.clientId),
+    getClientAutomations(session.clientId),
+    getClientDeliverables(session.clientId),
+  ]);
 
   return (
     <PortalDashboard
       client={session.client}
       systems={systems}
+      workflows={workflows}
+      automations={automations}
+      deliverables={deliverables}
     />
   );
 }
