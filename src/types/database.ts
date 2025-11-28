@@ -34,12 +34,14 @@ export interface Audit {
 
 export interface SystemBuild {
   id: string;
+  project_id: string | null;
   title: string;
   prompt: string;
   result: SystemBuildResult | null;
   status: "pending" | "processing" | "completed" | "failed";
   created_at: string;
   updated_at: string;
+  project?: Project;
 }
 
 export interface SystemBuildResult {

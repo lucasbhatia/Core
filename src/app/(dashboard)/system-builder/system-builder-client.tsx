@@ -447,7 +447,7 @@ function SystemBuildResultView({ result }: { result: SystemBuildResult }) {
         <TabsContent value="prompts" className="mt-4 space-y-4">
           {result.aiPrompts && result.aiPrompts.length > 0 ? (
             result.aiPrompts.map((prompt, index) => {
-              const promptAny = prompt as Record<string, unknown>;
+              const promptAny = prompt as unknown as Record<string, unknown>;
               const name = safeString(promptAny.name || `Prompt ${index + 1}`);
               const purpose = safeString(promptAny.purpose || "");
               const promptText = safeString(promptAny.prompt || "");
@@ -582,7 +582,7 @@ function SystemBuildResultView({ result }: { result: SystemBuildResult }) {
         <TabsContent value="code" className="mt-4 space-y-4">
           {result.codeSnippets && result.codeSnippets.length > 0 ? (
             result.codeSnippets.map((snippet, index) => {
-              const snippetAny = snippet as Record<string, unknown>;
+              const snippetAny = snippet as unknown as Record<string, unknown>;
               const name = safeString(snippetAny.name || `Code Snippet ${index + 1}`);
               const description = safeString(snippetAny.description || "");
               const language = safeString(snippetAny.language || "text");
@@ -627,7 +627,7 @@ function SystemBuildResultView({ result }: { result: SystemBuildResult }) {
           {result.emailTemplates && result.emailTemplates.length > 0 ? (
             result.emailTemplates.map((template, index) => {
               // Handle various formats AI might return
-              const templateAny = template as Record<string, unknown>;
+              const templateAny = template as unknown as Record<string, unknown>;
               const name = safeString(templateAny.name || `Email Template ${index + 1}`);
               const subject = safeString(templateAny.subject || "");
               const body = safeString(templateAny.body || "");
@@ -689,7 +689,7 @@ function SystemBuildResultView({ result }: { result: SystemBuildResult }) {
         <TabsContent value="api" className="mt-4 space-y-4">
           {result.apiConfig && result.apiConfig.length > 0 ? (
             result.apiConfig.map((api, index) => {
-              const apiAny = api as Record<string, unknown>;
+              const apiAny = api as unknown as Record<string, unknown>;
               const name = safeString(apiAny.name || `API ${index + 1}`);
               const description = safeString(apiAny.description || "");
               const method = safeString(apiAny.method || "GET");

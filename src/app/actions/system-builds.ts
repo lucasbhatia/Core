@@ -34,7 +34,7 @@ export async function getSystemBuild(id: string) {
   return data as SystemBuild;
 }
 
-export async function createSystemBuild(title: string, prompt: string) {
+export async function createSystemBuild(title: string, prompt: string, projectId?: string) {
   const supabase = await createSupabaseClient();
 
   const { data, error } = await supabase
@@ -43,6 +43,7 @@ export async function createSystemBuild(title: string, prompt: string) {
       {
         title,
         prompt,
+        project_id: projectId || null,
         status: "pending",
         result: null,
       },
@@ -56,7 +57,26 @@ export async function createSystemBuild(title: string, prompt: string) {
   }
 
   revalidatePath("/system-builder");
+  if (projectId) {
+    revalidatePath(`/projects/${projectId}`);
+  }
   return data as SystemBuild;
+}
+
+export async function getSystemBuildsByProject(projectId: string) {
+  const supabase = await createSupabaseClient();
+  const { data, error } = await supabase
+    .from("system_builds")
+    .select("*")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching project systems:", error);
+    return [];
+  }
+
+  return data as SystemBuild[];
 }
 
 export async function updateSystemBuildResult(
