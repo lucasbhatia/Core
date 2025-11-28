@@ -625,5 +625,199 @@ async function logStep(
   });
 }
 
+// ===== AI PLATFORM WORKFLOW EXECUTION =====
+
+import { executeWorkflow } from "@/lib/ai-platform/workflow-engine";
+import { executeAgentTask, getAgentByType } from "@/lib/ai-platform/agent-executor";
+
+// Workflow execution function
+export const executeWorkflowFunction = inngest.createFunction(
+  {
+    id: "workflow-execute",
+    name: "Execute AI Workflow",
+    retries: 2,
+  },
+  { event: "workflow/execute" },
+  async ({ event, step }) => {
+    const { workflowId, requestId, clientId } = event.data as {
+      workflowId: string;
+      requestId: string;
+      clientId?: string;
+    };
+
+    const supabase = getSupabase();
+
+    // Step 1: Get workflow and tasks
+    const workflow = await step.run("get-workflow", async () => {
+      const { data } = await supabase
+        .from("workflows")
+        .select(`
+          *,
+          requests(*),
+          agent_tasks(*, agents(*))
+        `)
+        .eq("id", workflowId)
+        .single();
+
+      return data;
+    });
+
+    if (!workflow) {
+      throw new Error("Workflow not found");
+    }
+
+    // Step 2: Update status to running
+    await step.run("start-workflow", async () => {
+      await supabase
+        .from("workflows")
+        .update({ status: "running", started_at: new Date().toISOString() })
+        .eq("id", workflowId);
+    });
+
+    // Step 3: Execute each task in order
+    const tasks = (workflow.agent_tasks || []).sort((a: { step_index: number }, b: { step_index: number }) => a.step_index - b.step_index);
+    const outputs: Record<string, unknown> = {};
+    const deliverables: unknown[] = [];
+
+    for (const task of tasks) {
+      const taskResult = await step.run(`task-${task.step_index}-${task.name.slice(0, 20)}`, async () => {
+        // Get agent
+        const agent = task.agents || await getAgentByType(task.agent_id);
+        if (!agent) {
+          return { success: false, error: "Agent not found" };
+        }
+
+        // Update task status
+        await supabase
+          .from("agent_tasks")
+          .update({ status: "running", started_at: new Date().toISOString() })
+          .eq("id", task.id);
+
+        // Get previous outputs for context
+        const dependsOn = (task.depends_on || []) as number[];
+        const previousOutputs = dependsOn.map(depIndex => {
+          const depTask = tasks.find((t: { step_index: number }) => t.step_index === depIndex);
+          return depTask?.output_data;
+        }).filter(Boolean);
+
+        // Execute task
+        const startTime = Date.now();
+        const result = await executeAgentTask(
+          agent,
+          task.instructions,
+          {
+            taskName: task.name,
+            taskDescription: task.description,
+            requestContent: workflow.requests?.content,
+            requestSummary: workflow.requests?.ai_summary,
+          },
+          {
+            previousOutputs,
+            workflowContext: workflow.name,
+          }
+        );
+        const duration = Date.now() - startTime;
+
+        // Update task with results
+        await supabase
+          .from("agent_tasks")
+          .update({
+            status: result.success ? "completed" : "failed",
+            output_data: { text: result.output, structured: result.structuredOutput },
+            ai_response: result.output,
+            tokens_used: result.tokensUsed,
+            completed_at: new Date().toISOString(),
+            duration_ms: duration,
+            error_message: result.error,
+          })
+          .eq("id", task.id);
+
+        // Create deliverable if content-producing step
+        if (result.success && ["writer", "researcher", "analyst", "developer", "strategist"].includes(agent.agent_type)) {
+          await supabase
+            .from("deliverables")
+            .insert({
+              workflow_id: workflowId,
+              task_id: task.id,
+              client_id: clientId,
+              name: task.name,
+              description: task.description,
+              file_type: "document",
+              content: result.output,
+              status: "draft",
+            });
+        }
+
+        return {
+          success: result.success,
+          output: result.output,
+          taskName: task.name,
+        };
+      });
+
+      if (taskResult.success) {
+        outputs[taskResult.taskName] = taskResult.output;
+      }
+
+      // Update workflow progress
+      await step.run(`update-progress-${task.step_index}`, async () => {
+        await supabase
+          .from("workflows")
+          .update({ current_step: task.step_index + 1 })
+          .eq("id", workflowId);
+      });
+    }
+
+    // Step 4: Finalize workflow
+    await step.run("finalize-workflow", async () => {
+      const completedTasks = tasks.filter((t: { output_data: unknown }) => t.output_data).length;
+      const allCompleted = completedTasks === tasks.length;
+
+      await supabase
+        .from("workflows")
+        .update({
+          status: allCompleted ? "completed" : "completed", // Mark as completed even with partial success
+          completed_at: new Date().toISOString(),
+          outputs,
+        })
+        .eq("id", workflowId);
+
+      // Update request
+      await supabase
+        .from("requests")
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", requestId);
+
+      // Send notification email if client email exists
+      if (clientId) {
+        const { data: client } = await supabase
+          .from("clients")
+          .select("email, name")
+          .eq("id", clientId)
+          .single();
+
+        if (client?.email) {
+          await sendEmail({
+            to: client.email,
+            subject: `Your request has been completed: ${workflow.name}`,
+            html: `
+              <h2>Your Request is Complete!</h2>
+              <p>Hi ${client.name},</p>
+              <p>Great news! Your request "${workflow.name}" has been completed.</p>
+              <p>You can view the deliverables in your client portal.</p>
+              <p>Best regards,<br>CoreOS Hub</p>
+            `,
+          });
+        }
+      }
+    });
+
+    return { success: true, workflowId, outputs };
+  }
+);
+
 // Export all functions for the serve handler
-export const functions = [runAutomation, scheduledAutomation];
+export const functions = [runAutomation, scheduledAutomation, executeWorkflowFunction];
