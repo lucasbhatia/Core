@@ -1,8 +1,8 @@
 import { redirect, notFound } from "next/navigation";
 import { getPortalSession } from "@/app/actions/portal-auth";
 import { getSystemBuild } from "@/app/actions/system-builds";
-import { getClientActivity } from "@/app/actions/system-data";
-import SystemPortalClient from "./system-portal-client";
+import { getClientAutomationRuns, getAutomationStats } from "@/app/actions/automations";
+import AutomationPortalClient from "./automation-portal-client";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -17,7 +17,6 @@ export default async function SystemPortalPage({ params, searchParams }: PagePro
   }
 
   const { id } = await params;
-  const { action } = await searchParams;
 
   try {
     const system = await getSystemBuild(id);
@@ -27,15 +26,18 @@ export default async function SystemPortalPage({ params, searchParams }: PagePro
       notFound();
     }
 
-    // Fetch activity for this system and client
-    const initialActivity = await getClientActivity(session.clientId, id);
+    // Fetch automation data
+    const [recentRuns, stats] = await Promise.all([
+      getClientAutomationRuns(session.clientId, id, 10),
+      getAutomationStats(id),
+    ]);
 
     return (
-      <SystemPortalClient
+      <AutomationPortalClient
         system={system}
         client={session.client}
-        activeActionId={action}
-        initialActivity={initialActivity}
+        recentRuns={recentRuns}
+        stats={stats}
       />
     );
   } catch (error) {

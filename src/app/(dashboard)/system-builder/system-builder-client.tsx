@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,12 +61,20 @@ import {
   BarChart3,
   Send,
   Inbox,
+  PlayCircle,
+  PauseCircle,
+  Activity,
+  RefreshCw,
+  AlertTriangle,
+  Key,
+  Link,
 } from "lucide-react";
 import { createSystemBuild, deleteSystemBuild, assignClientToSystem } from "@/app/actions/system-builds";
+import { activateAutomation, pauseAutomation, getAutomationRuns, getAutomationStats } from "@/app/actions/automations";
 import { useToast } from "@/components/ui/use-toast";
 import { formatDateTime } from "@/lib/utils";
 import { SubmissionsView } from "@/components/system-builder/submissions-view";
-import type { SystemBuild, SystemBuildResult, Client, SystemAction } from "@/types/database";
+import type { SystemBuild, SystemBuildResult, Client, SystemAction, AutomationRun } from "@/types/database";
 
 interface SystemBuilderClientProps {
   initialBuilds: SystemBuild[];
@@ -365,6 +373,23 @@ export function SystemBuilderClient({ initialBuilds, clients }: SystemBuilderCli
                   )
                 );
                 setSelectedBuild({ ...selectedBuild, actions });
+              }}
+            />
+          )}
+
+          {/* Automation Controls */}
+          {selectedBuild && (
+            <AutomationControls
+              system={selectedBuild}
+              onUpdate={(updates) => {
+                setBuilds((prevBuilds) =>
+                  prevBuilds.map((b) =>
+                    b.id === selectedBuild.id
+                      ? { ...b, ...updates }
+                      : b
+                  )
+                );
+                setSelectedBuild({ ...selectedBuild, ...updates });
               }}
             />
           )}
@@ -1117,6 +1142,264 @@ function ActionsPreview({ actions }: { actions: SystemAction[] }) {
             </div>
           ))}
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Automation Controls Component
+interface AutomationControlsProps {
+  system: SystemBuild;
+  onUpdate: (updates: Partial<SystemBuild>) => void;
+}
+
+function AutomationControls({ system, onUpdate }: AutomationControlsProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
+  const [runs, setRuns] = useState<AutomationRun[]>([]);
+  const [stats, setStats] = useState<{
+    total_runs: number;
+    error_count: number;
+    last_run_at: string | null;
+    status: string;
+    runs_last_24h: number;
+    success_rate: number;
+  } | null>(null);
+  const [loadingData, setLoadingData] = useState(true);
+  const { toast } = useToast();
+
+  const automationStatus = system.automation_status || "pending";
+  const isActive = automationStatus === "active";
+
+  // Load runs and stats
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [runsData, statsData] = await Promise.all([
+          getAutomationRuns(system.id, 5),
+          getAutomationStats(system.id),
+        ]);
+        setRuns(runsData);
+        setStats(statsData);
+      } catch (error) {
+        console.error("Failed to load automation data:", error);
+      } finally {
+        setLoadingData(false);
+      }
+    }
+    loadData();
+  }, [system.id]);
+
+  async function handleActivate() {
+    setIsLoading(true);
+    try {
+      const updated = await activateAutomation(system.id);
+      onUpdate({
+        automation_status: updated.automation_status,
+        webhook_url: updated.webhook_url,
+        webhook_secret: updated.webhook_secret,
+      });
+      toast({
+        title: "Automation activated",
+        description: "The automation is now active and ready to receive webhooks.",
+        variant: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to activate automation.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handlePause() {
+    setIsLoading(true);
+    try {
+      const updated = await pauseAutomation(system.id);
+      onUpdate({ automation_status: updated.automation_status });
+      toast({
+        title: "Automation paused",
+        description: "The automation has been paused.",
+        variant: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to pause automation.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  const statusConfig: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
+    active: {
+      color: "bg-green-100 text-green-700 border-green-200",
+      icon: <PlayCircle className="w-3 h-3" />,
+      label: "Active",
+    },
+    paused: {
+      color: "bg-yellow-100 text-yellow-700 border-yellow-200",
+      icon: <PauseCircle className="w-3 h-3" />,
+      label: "Paused",
+    },
+    error: {
+      color: "bg-red-100 text-red-700 border-red-200",
+      icon: <AlertTriangle className="w-3 h-3" />,
+      label: "Error",
+    },
+    pending: {
+      color: "bg-gray-100 text-gray-700 border-gray-200",
+      icon: <Clock className="w-3 h-3" />,
+      label: "Not Activated",
+    },
+  };
+
+  const { color, icon, label } = statusConfig[automationStatus] || statusConfig.pending;
+
+  return (
+    <Card className="border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/20">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Activity className="w-4 h-4 text-purple-600" />
+            Automation Controls
+          </CardTitle>
+          <Badge variant="outline" className={`${color} flex items-center gap-1`}>
+            {icon}
+            {label}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Stats Row */}
+        {stats && (
+          <div className="grid grid-cols-4 gap-3">
+            <div className="text-center p-2 bg-white dark:bg-gray-900 rounded-lg">
+              <p className="text-lg font-bold">{stats.total_runs}</p>
+              <p className="text-xs text-muted-foreground">Total Runs</p>
+            </div>
+            <div className="text-center p-2 bg-white dark:bg-gray-900 rounded-lg">
+              <p className="text-lg font-bold">{stats.runs_last_24h}</p>
+              <p className="text-xs text-muted-foreground">Last 24h</p>
+            </div>
+            <div className="text-center p-2 bg-white dark:bg-gray-900 rounded-lg">
+              <p className="text-lg font-bold">{stats.success_rate}%</p>
+              <p className="text-xs text-muted-foreground">Success</p>
+            </div>
+            <div className="text-center p-2 bg-white dark:bg-gray-900 rounded-lg">
+              <p className="text-lg font-bold">{stats.error_count}</p>
+              <p className="text-xs text-muted-foreground">Errors</p>
+            </div>
+          </div>
+        )}
+
+        {/* Controls */}
+        <div className="flex items-center gap-2">
+          {isActive ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePause}
+              disabled={isLoading}
+              className="gap-2"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <PauseCircle className="w-4 h-4" />
+              )}
+              Pause Automation
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={handleActivate}
+              disabled={isLoading}
+              className="gap-2 bg-green-600 hover:bg-green-700"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <PlayCircle className="w-4 h-4" />
+              )}
+              Activate Automation
+            </Button>
+          )}
+        </div>
+
+        {/* Webhook Info (only show when active) */}
+        {system.webhook_url && (
+          <div className="space-y-2 pt-2 border-t">
+            <div>
+              <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                <Link className="w-3 h-3" />
+                Webhook URL
+              </Label>
+              <div className="flex items-center gap-2 mt-1">
+                <code className="flex-1 text-xs bg-white dark:bg-gray-900 px-2 py-1 rounded border truncate">
+                  {system.webhook_url}
+                </code>
+                <CopyButton text={system.webhook_url} label="Copy" />
+              </div>
+            </div>
+            {system.webhook_secret && (
+              <div>
+                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Key className="w-3 h-3" />
+                  Webhook Secret
+                </Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <code className="flex-1 text-xs bg-white dark:bg-gray-900 px-2 py-1 rounded border truncate">
+                    {showSecret ? system.webhook_secret : "••••••••••••••••"}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowSecret(!showSecret)}
+                  >
+                    {showSecret ? "Hide" : "Show"}
+                  </Button>
+                  <CopyButton text={system.webhook_secret} label="Copy" />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Recent Runs */}
+        {runs.length > 0 && (
+          <div className="pt-2 border-t">
+            <Label className="text-xs text-muted-foreground">Recent Runs</Label>
+            <div className="space-y-1 mt-2">
+              {runs.slice(0, 3).map((run) => (
+                <div
+                  key={run.id}
+                  className="flex items-center gap-2 text-xs p-2 bg-white dark:bg-gray-900 rounded"
+                >
+                  {run.status === "success" ? (
+                    <CheckCircle className="w-3 h-3 text-green-500" />
+                  ) : run.status === "failed" ? (
+                    <XCircle className="w-3 h-3 text-red-500" />
+                  ) : (
+                    <RefreshCw className="w-3 h-3 text-blue-500 animate-spin" />
+                  )}
+                  <span className="flex-1 capitalize">{run.trigger_type}</span>
+                  <span className="text-muted-foreground">
+                    {run.duration_ms ? `${run.duration_ms}ms` : "-"}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {new Date(run.created_at).toLocaleTimeString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
