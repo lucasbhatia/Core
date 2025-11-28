@@ -176,18 +176,19 @@ export async function getClientWorkflows(clientId: string) {
   try {
     const supabase = await createSupabaseClient();
 
-    // Try with is_automation filter first (if migration has run)
+    // Query workflows directly by client_id on the workflow table
+    // This is more reliable than joining through requests
     let { data, error } = await supabase
       .from("workflows")
       .select(`
         *,
-        requests!inner(
+        requests(
           id, content, source, subject, status, created_at, completed_at
         ),
         agent_tasks(count),
         deliverables(count)
       `)
-      .eq("requests.client_id", clientId)
+      .eq("client_id", clientId)
       .eq("is_automation", false)
       .order("created_at", { ascending: false })
       .limit(20);
@@ -198,13 +199,13 @@ export async function getClientWorkflows(clientId: string) {
         .from("workflows")
         .select(`
           *,
-          requests!inner(
+          requests(
             id, content, source, subject, status, created_at, completed_at
           ),
           agent_tasks(count),
           deliverables(count)
         `)
-        .eq("requests.client_id", clientId)
+        .eq("client_id", clientId)
         .order("created_at", { ascending: false })
         .limit(20);
       data = result.data;
@@ -212,12 +213,13 @@ export async function getClientWorkflows(clientId: string) {
     }
 
     if (error) {
-      // Silently return empty if tables don't exist yet
+      console.error("Error fetching client workflows:", error);
       return [];
     }
 
     return data || [];
-  } catch {
+  } catch (e) {
+    console.error("Exception fetching client workflows:", e);
     return [];
   }
 }
@@ -227,25 +229,27 @@ export async function getClientAutomations(clientId: string) {
   try {
     const supabase = await createSupabaseClient();
 
+    // Query automations directly by client_id on the workflow table
     const { data, error } = await supabase
       .from("workflows")
       .select(`
         *,
-        requests!inner(
+        requests(
           id, content, source, subject
         )
       `)
-      .eq("requests.client_id", clientId)
+      .eq("client_id", clientId)
       .eq("is_automation", true)
       .order("created_at", { ascending: false });
 
     if (error) {
-      // Silently return empty if column/table doesn't exist yet
+      console.error("Error fetching client automations:", error);
       return [];
     }
 
     return data || [];
-  } catch {
+  } catch (e) {
+    console.error("Exception fetching client automations:", e);
     return [];
   }
 }
@@ -255,6 +259,7 @@ export async function getClientDeliverables(clientId: string) {
   try {
     const supabase = await createSupabaseClient();
 
+    // Get deliverables directly by client_id
     const { data, error } = await supabase
       .from("deliverables")
       .select(`
@@ -264,15 +269,16 @@ export async function getClientDeliverables(clientId: string) {
       `)
       .eq("client_id", clientId)
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(50);
 
     if (error) {
-      // Silently return empty if table doesn't exist yet
+      console.error("Error fetching client deliverables:", error);
       return [];
     }
 
     return data || [];
-  } catch {
+  } catch (e) {
+    console.error("Exception fetching client deliverables:", e);
     return [];
   }
 }

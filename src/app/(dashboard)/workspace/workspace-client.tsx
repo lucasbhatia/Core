@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,9 +18,11 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -55,7 +57,10 @@ import {
   Calendar,
   Webhook,
   Copy,
-  RefreshCw,
+  Building2,
+  ExternalLink,
+  AlertCircle,
+  Eye,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
@@ -83,6 +88,7 @@ interface WorkflowType {
   current_step: number;
   total_steps: number;
   created_at: string;
+  client_id: string | null;
   is_automation: boolean;
   automation_status: string | null;
   automation_schedule: string | null;
@@ -91,7 +97,7 @@ interface WorkflowType {
   run_count: number;
   webhook_url: string | null;
   webhook_secret: string | null;
-  requests: { id: string; subject: string | null; content: string } | null;
+  requests: { id: string; subject: string | null; content: string; client_id: string | null } | null;
   clients: { id: string; name: string; email: string } | null;
   agent_tasks: { id: string; name: string; status: string; agent_id: string }[];
 }
@@ -140,11 +146,54 @@ export function WorkspaceClient({
   const [saveAsAutomationWorkflow, setSaveAsAutomationWorkflow] = useState<WorkflowType | null>(null);
   const [automationName, setAutomationName] = useState("");
   const [automationSchedule, setAutomationSchedule] = useState("manual");
+  const [selectedClientFilter, setSelectedClientFilter] = useState<string>("all");
   const { toast } = useToast();
 
   // Filter automations from workflows
   const automations = workflows.filter(w => w.is_automation);
   const activeWorkflows = workflows.filter(w => !w.is_automation && ["running", "draft", "approved"].includes(w.status));
+
+  // Group data by client for the Client Hub
+  const clientStats = useMemo(() => {
+    const statsMap = new Map<string, {
+      client: Client;
+      jobCount: number;
+      automationCount: number;
+      completedCount: number;
+      activeCount: number;
+    }>();
+
+    // Initialize with all clients
+    clients.forEach(client => {
+      statsMap.set(client.id, {
+        client,
+        jobCount: 0,
+        automationCount: 0,
+        completedCount: 0,
+        activeCount: 0,
+      });
+    });
+
+    // Count workflows per client
+    workflows.forEach(workflow => {
+      const clientId = workflow.client_id || workflow.requests?.client_id;
+      if (clientId && statsMap.has(clientId)) {
+        const stat = statsMap.get(clientId)!;
+        if (workflow.is_automation) {
+          stat.automationCount++;
+        } else {
+          stat.jobCount++;
+          if (workflow.status === "completed") {
+            stat.completedCount++;
+          } else if (["running", "in_progress"].includes(workflow.status)) {
+            stat.activeCount++;
+          }
+        }
+      }
+    });
+
+    return Array.from(statsMap.values()).filter(s => s.jobCount > 0 || s.automationCount > 0);
+  }, [clients, workflows]);
 
   const handleSubmitRequest = async () => {
     if (!newRequestContent.trim()) return;
@@ -243,26 +292,26 @@ export function WorkspaceClient({
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }> = {
-      pending: { variant: "outline", icon: <Clock className="h-3 w-3" /> },
-      classifying: { variant: "secondary", icon: <Loader2 className="h-3 w-3 animate-spin" /> },
-      planning: { variant: "secondary", icon: <Loader2 className="h-3 w-3 animate-spin" /> },
-      in_progress: { variant: "default", icon: <Play className="h-3 w-3" /> },
-      running: { variant: "default", icon: <Loader2 className="h-3 w-3 animate-spin" /> },
-      review: { variant: "secondary", icon: <FileText className="h-3 w-3" /> },
-      completed: { variant: "default", icon: <CheckCircle2 className="h-3 w-3" /> },
-      delivered: { variant: "default", icon: <Send className="h-3 w-3" /> },
-      failed: { variant: "destructive", icon: <XCircle className="h-3 w-3" /> },
-      active: { variant: "default", icon: <Play className="h-3 w-3" /> },
-      inactive: { variant: "outline", icon: <Pause className="h-3 w-3" /> },
-      paused: { variant: "secondary", icon: <Pause className="h-3 w-3" /> },
+    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode; label: string }> = {
+      pending: { variant: "outline", icon: <Clock className="h-3 w-3" />, label: "Pending" },
+      classifying: { variant: "secondary", icon: <Loader2 className="h-3 w-3 animate-spin" />, label: "Processing" },
+      planning: { variant: "secondary", icon: <Loader2 className="h-3 w-3 animate-spin" />, label: "Planning" },
+      in_progress: { variant: "default", icon: <Loader2 className="h-3 w-3 animate-spin" />, label: "In Progress" },
+      running: { variant: "default", icon: <Loader2 className="h-3 w-3 animate-spin" />, label: "Running" },
+      review: { variant: "secondary", icon: <Eye className="h-3 w-3" />, label: "Review" },
+      completed: { variant: "default", icon: <CheckCircle2 className="h-3 w-3" />, label: "Completed" },
+      delivered: { variant: "default", icon: <Send className="h-3 w-3" />, label: "Delivered" },
+      failed: { variant: "destructive", icon: <XCircle className="h-3 w-3" />, label: "Failed" },
+      active: { variant: "default", icon: <Play className="h-3 w-3" />, label: "Active" },
+      inactive: { variant: "outline", icon: <Pause className="h-3 w-3" />, label: "Inactive" },
+      paused: { variant: "secondary", icon: <Pause className="h-3 w-3" />, label: "Paused" },
     };
 
     const config = variants[status] || variants.pending;
     return (
       <Badge variant={config.variant} className="flex items-center gap-1">
         {config.icon}
-        {status.replace("_", " ")}
+        {config.label}
       </Badge>
     );
   };
@@ -293,6 +342,11 @@ export function WorkspaceClient({
     return labels[schedule || "manual"] || schedule || "Manual trigger";
   };
 
+  // Filter requests by selected client
+  const filteredRequests = selectedClientFilter === "all"
+    ? requests
+    : requests.filter(r => r.clients?.id === selectedClientFilter);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -300,23 +354,64 @@ export function WorkspaceClient({
         <div>
           <h1 className="text-3xl font-bold">AI Workspace</h1>
           <p className="text-muted-foreground">
-            Manage requests, automations, and AI agents
+            Create automations for your clients
           </p>
         </div>
         <Dialog open={isNewRequestOpen} onOpenChange={setIsNewRequestOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button size="lg">
               <Plus className="h-4 w-4 mr-2" />
-              New Request
+              New Job
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>Create New Request</DialogTitle>
+              <DialogTitle>Create New Job</DialogTitle>
+              <DialogDescription>
+                Describe what you need and optionally link it to a client
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              {/* Client Selection - Made Prominent */}
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <Label className="text-sm font-semibold text-blue-900 flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Link to Client
+                </Label>
+                <p className="text-xs text-blue-700 mb-2">
+                  Select a client to make this job visible in their portal
+                </p>
+                <Select value={selectedClient} onValueChange={setSelectedClient}>
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Choose a client..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      <span className="text-muted-foreground">No client (internal only)</span>
+                    </SelectItem>
+                    {clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{client.name}</span>
+                          {client.company && (
+                            <span className="text-muted-foreground">- {client.company}</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedClient && selectedClient !== "none" && (
+                  <p className="text-xs text-green-700 mt-2 flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Job and deliverables will be visible in client portal
+                  </p>
+                )}
+              </div>
+
               <div>
-                <label className="text-sm font-medium">What do you need?</label>
+                <Label className="text-sm font-medium">What do you need?</Label>
                 <Textarea
                   placeholder="Describe what you need... e.g., 'Create a marketing plan for our new product launch' or 'Research competitors in the fintech space'"
                   value={newRequestContent}
@@ -324,33 +419,10 @@ export function WorkspaceClient({
                   className="mt-1.5 min-h-[150px]"
                 />
               </div>
-              <div>
-                <label className="text-sm font-medium">Client (optional)</label>
-                <p className="text-xs text-muted-foreground mb-1.5">
-                  Link this request to a client so they can view it in their portal
-                </p>
-                <Select value={selectedClient} onValueChange={setSelectedClient}>
-                  <SelectTrigger className="mt-1.5">
-                    <SelectValue placeholder="Select a client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No client</SelectItem>
-                    {clients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <span>{client.name}</span>
-                          {client.company && (
-                            <span className="text-muted-foreground">({client.company})</span>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+
               <Button
                 className="w-full"
+                size="lg"
                 onClick={handleSubmitRequest}
                 disabled={isSubmitting || !newRequestContent.trim()}
               >
@@ -362,7 +434,7 @@ export function WorkspaceClient({
                 ) : (
                   <>
                     <Zap className="h-4 w-4 mr-2" />
-                    Submit Request
+                    Submit Job
                   </>
                 )}
               </Button>
@@ -381,7 +453,7 @@ export function WorkspaceClient({
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.totalRequests}</p>
-                <p className="text-sm text-muted-foreground">Total Requests</p>
+                <p className="text-sm text-muted-foreground">Total Jobs</p>
               </div>
             </div>
           </CardContent>
@@ -416,11 +488,11 @@ export function WorkspaceClient({
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-orange-100 rounded-lg">
-                <BarChart3 className="h-6 w-6 text-orange-600" />
+                <Users className="h-6 w-6 text-orange-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats.successRate}%</p>
-                <p className="text-sm text-muted-foreground">Success Rate</p>
+                <p className="text-2xl font-bold">{clientStats.length}</p>
+                <p className="text-sm text-muted-foreground">Active Clients</p>
               </div>
             </div>
           </CardContent>
@@ -428,19 +500,19 @@ export function WorkspaceClient({
       </div>
 
       {/* Main Content */}
-      <Tabs defaultValue="requests" className="space-y-4">
+      <Tabs defaultValue="clients" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="requests" className="flex items-center gap-2">
+          <TabsTrigger value="clients" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Client Hub
+          </TabsTrigger>
+          <TabsTrigger value="jobs" className="flex items-center gap-2">
             <Inbox className="h-4 w-4" />
-            Requests
+            All Jobs
           </TabsTrigger>
           <TabsTrigger value="automations" className="flex items-center gap-2">
             <Zap className="h-4 w-4" />
             Automations
-          </TabsTrigger>
-          <TabsTrigger value="workflows" className="flex items-center gap-2">
-            <Workflow className="h-4 w-4" />
-            Active Workflows
           </TabsTrigger>
           <TabsTrigger value="agents" className="flex items-center gap-2">
             <Bot className="h-4 w-4" />
@@ -448,38 +520,162 @@ export function WorkspaceClient({
           </TabsTrigger>
         </TabsList>
 
-        {/* Requests Tab */}
-        <TabsContent value="requests" className="space-y-4">
-          {requests.length === 0 ? (
+        {/* Client Hub Tab */}
+        <TabsContent value="clients" className="space-y-4">
+          {clientStats.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
-                <Inbox className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="font-semibold mb-2">No requests yet</h3>
+                <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="font-semibold mb-2">No client activity yet</h3>
                 <p className="text-muted-foreground mb-4">
-                  Create your first request to see AI agents in action
+                  Create a job linked to a client to see their activity here
                 </p>
                 <Button onClick={() => setIsNewRequestOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
-                  New Request
+                  Create Client Job
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {clientStats.map(({ client, jobCount, automationCount, completedCount, activeCount }) => (
+                <Card key={client.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                          <Building2 className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-base">{client.name}</CardTitle>
+                          <CardDescription className="text-xs">
+                            {client.company || client.email}
+                          </CardDescription>
+                        </div>
+                      </div>
+                      {activeCount > 0 && (
+                        <Badge variant="default" className="flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          {activeCount} active
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-3 gap-4 text-center py-2">
+                      <div>
+                        <p className="text-2xl font-bold text-blue-600">{jobCount}</p>
+                        <p className="text-xs text-muted-foreground">Jobs</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-green-600">{completedCount}</p>
+                        <p className="text-xs text-muted-foreground">Completed</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-purple-600">{automationCount}</p>
+                        <p className="text-xs text-muted-foreground">Automations</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => {
+                          setSelectedClient(client.id);
+                          setIsNewRequestOpen(true);
+                        }}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        New Job
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedClientFilter(client.id);
+                          // Switch to jobs tab
+                          const jobsTab = document.querySelector('[data-state="inactive"][value="jobs"]') as HTMLButtonElement;
+                          if (jobsTab) jobsTab.click();
+                        }}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Jobs Tab */}
+        <TabsContent value="jobs" className="space-y-4">
+          {/* Filter by client */}
+          <div className="flex items-center gap-4">
+            <Select value={selectedClientFilter} onValueChange={setSelectedClientFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Filter by client" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Clients</SelectItem>
+                {clients.map((client) => (
+                  <SelectItem key={client.id} value={client.id}>
+                    {client.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedClientFilter !== "all" && (
+              <Button variant="ghost" size="sm" onClick={() => setSelectedClientFilter("all")}>
+                Clear filter
+              </Button>
+            )}
+          </div>
+
+          {filteredRequests.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Inbox className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="font-semibold mb-2">No jobs found</h3>
+                <p className="text-muted-foreground mb-4">
+                  {selectedClientFilter !== "all"
+                    ? "No jobs for this client yet"
+                    : "Create your first job to get started"}
+                </p>
+                <Button onClick={() => setIsNewRequestOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Job
                 </Button>
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-3">
-              {requests.map((request) => (
+              {filteredRequests.map((request) => (
                 <Card key={request.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="py-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           {getStatusBadge(request.status)}
                           {getPriorityBadge(request.priority)}
                           {request.request_type && (
                             <Badge variant="outline">{request.request_type}</Badge>
                           )}
+                          {request.clients ? (
+                            <Badge variant="secondary" className="flex items-center gap-1">
+                              <Building2 className="h-3 w-3" />
+                              {request.clients.name}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground">
+                              Internal
+                            </Badge>
+                          )}
                         </div>
                         <h3 className="font-semibold truncate">
-                          {request.subject || request.ai_summary || "New Request"}
+                          {request.subject || request.ai_summary || "New Job"}
                         </h3>
                         <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
                           {request.content.slice(0, 200)}...
@@ -489,12 +685,6 @@ export function WorkspaceClient({
                             <Clock className="h-3 w-3" />
                             {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
                           </span>
-                          {request.clients && (
-                            <span className="flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              {request.clients.name}
-                            </span>
-                          )}
                           <span className="flex items-center gap-1">
                             <Send className="h-3 w-3" />
                             {request.source}
@@ -511,7 +701,7 @@ export function WorkspaceClient({
                               <div
                                 className="h-full bg-blue-600 rounded-full"
                                 style={{
-                                  width: `${(request.workflows[0].current_step / request.workflows[0].total_steps) * 100}%`,
+                                  width: `${(request.workflows[0].current_step / Math.max(request.workflows[0].total_steps, 1)) * 100}%`,
                                 }}
                               />
                             </div>
@@ -550,7 +740,7 @@ export function WorkspaceClient({
                 <Zap className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="font-semibold mb-2">No automations yet</h3>
                 <p className="text-muted-foreground mb-4">
-                  Complete a request and save it as an automation to run it again
+                  Complete a job and save it as an automation to run it again
                 </p>
               </CardContent>
             </Card>
@@ -560,7 +750,15 @@ export function WorkspaceClient({
                 <Card key={automation.id}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{automation.name}</CardTitle>
+                      <div>
+                        <CardTitle className="text-lg">{automation.name}</CardTitle>
+                        {automation.clients && (
+                          <CardDescription className="flex items-center gap-1 mt-1">
+                            <Building2 className="h-3 w-3" />
+                            {automation.clients.name}
+                          </CardDescription>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2">
                         {getStatusBadge(automation.automation_status || "inactive")}
                         <DropdownMenu>
@@ -589,11 +787,6 @@ export function WorkspaceClient({
                         </DropdownMenu>
                       </div>
                     </div>
-                    {automation.clients && (
-                      <CardDescription>
-                        Client: {automation.clients.name}
-                      </CardDescription>
-                    )}
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
@@ -649,73 +842,6 @@ export function WorkspaceClient({
           )}
         </TabsContent>
 
-        {/* Active Workflows Tab */}
-        <TabsContent value="workflows" className="space-y-4">
-          {activeWorkflows.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Workflow className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="font-semibold mb-2">No active workflows</h3>
-                <p className="text-muted-foreground">
-                  Workflows are created automatically when requests are processed
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {activeWorkflows.map((workflow) => (
-                <Card key={workflow.id}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{workflow.name}</CardTitle>
-                      {getStatusBadge(workflow.status)}
-                    </div>
-                    {workflow.clients && (
-                      <CardDescription>
-                        Client: {workflow.clients.name}
-                      </CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span>Progress</span>
-                        <span className="font-medium">
-                          {workflow.current_step}/{workflow.total_steps} steps
-                        </span>
-                      </div>
-                      <div className="w-full h-2 bg-gray-200 rounded-full">
-                        <div
-                          className="h-full bg-blue-600 rounded-full transition-all"
-                          style={{
-                            width: `${(workflow.current_step / workflow.total_steps) * 100}%`,
-                          }}
-                        />
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {workflow.agent_tasks.slice(0, 5).map((task) => (
-                          <Badge
-                            key={task.id}
-                            variant={task.status === "completed" ? "default" : "outline"}
-                            className="text-xs"
-                          >
-                            {task.name}
-                          </Badge>
-                        ))}
-                        {workflow.agent_tasks.length > 5 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{workflow.agent_tasks.length - 5} more
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
         {/* Agents Tab */}
         <TabsContent value="agents" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -750,10 +876,13 @@ export function WorkspaceClient({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Save as Automation</DialogTitle>
+            <DialogDescription>
+              Save this completed job as an automation to run it again
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium">Automation Name</label>
+              <Label className="text-sm font-medium">Automation Name</Label>
               <Input
                 value={automationName}
                 onChange={(e) => setAutomationName(e.target.value)}
@@ -762,7 +891,7 @@ export function WorkspaceClient({
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Trigger</label>
+              <Label className="text-sm font-medium">Trigger</Label>
               <Select value={automationSchedule} onValueChange={setAutomationSchedule}>
                 <SelectTrigger className="mt-1.5">
                   <SelectValue />
@@ -777,6 +906,17 @@ export function WorkspaceClient({
                 </SelectContent>
               </Select>
             </div>
+            {saveAsAutomationWorkflow?.clients && (
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800 flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  This automation is linked to <strong>{saveAsAutomationWorkflow.clients.name}</strong>
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  The client will see this automation in their portal
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSaveAsAutomationWorkflow(null)}>

@@ -30,12 +30,13 @@ export default async function WorkspacePage() {
     .order("created_at", { ascending: false })
     .limit(50);
 
-  // Get all workflows (including automations)
+  // Get all workflows (including automations) with client info
   const { data: workflows } = await supabase
     .from("workflows")
     .select(`
       *,
       requests(id, subject, content, client_id),
+      clients(id, name, email),
       agent_tasks(id, name, status, agent_id)
     `)
     .order("created_at", { ascending: false })
