@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { verifyPortalToken } from "@/app/actions/portal-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import Link from "next/link";
 
-export default function PortalVerifyPage() {
+function VerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -37,7 +37,7 @@ export default function PortalVerifyPage() {
           setStatus("error");
           setError(result.error || "Verification failed");
         }
-      } catch (err) {
+      } catch {
         setStatus("error");
         setError("Something went wrong. Please try again.");
       }
@@ -47,52 +47,76 @@ export default function PortalVerifyPage() {
   }, [token, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          {status === "loading" && (
-            <>
-              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                <Loader2 className="w-6 h-6 text-primary animate-spin" />
-              </div>
-              <CardTitle>Verifying...</CardTitle>
-              <CardDescription>
-                Please wait while we verify your access link
-              </CardDescription>
-            </>
-          )}
+    <Card className="w-full max-w-md">
+      <CardHeader className="text-center">
+        {status === "loading" && (
+          <>
+            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            </div>
+            <CardTitle>Verifying...</CardTitle>
+            <CardDescription>
+              Please wait while we verify your access link
+            </CardDescription>
+          </>
+        )}
 
-          {status === "success" && (
-            <>
-              <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              </div>
-              <CardTitle>Welcome Back!</CardTitle>
-              <CardDescription>
-                Redirecting you to your portal...
-              </CardDescription>
-            </>
-          )}
-
-          {status === "error" && (
-            <>
-              <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <XCircle className="w-6 h-6 text-red-600" />
-              </div>
-              <CardTitle>Verification Failed</CardTitle>
-              <CardDescription>{error}</CardDescription>
-            </>
-          )}
-        </CardHeader>
+        {status === "success" && (
+          <>
+            <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle className="w-6 h-6 text-green-600" />
+            </div>
+            <CardTitle>Welcome Back!</CardTitle>
+            <CardDescription>
+              Redirecting you to your portal...
+            </CardDescription>
+          </>
+        )}
 
         {status === "error" && (
-          <CardContent className="text-center">
-            <Button asChild>
-              <Link href="/portal/login">Request New Link</Link>
-            </Button>
-          </CardContent>
+          <>
+            <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <XCircle className="w-6 h-6 text-red-600" />
+            </div>
+            <CardTitle>Verification Failed</CardTitle>
+            <CardDescription>{error}</CardDescription>
+          </>
         )}
-      </Card>
+      </CardHeader>
+
+      {status === "error" && (
+        <CardContent className="text-center">
+          <Button asChild>
+            <Link href="/portal/login">Request New Link</Link>
+          </Button>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader className="text-center">
+        <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+          <Loader2 className="w-6 h-6 text-primary animate-spin" />
+        </div>
+        <CardTitle>Loading...</CardTitle>
+        <CardDescription>
+          Please wait...
+        </CardDescription>
+      </CardHeader>
+    </Card>
+  );
+}
+
+export default function PortalVerifyPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <Suspense fallback={<LoadingFallback />}>
+        <VerifyContent />
+      </Suspense>
     </div>
   );
 }

@@ -77,10 +77,25 @@ const PLANS = [
       "50 automations",
       "25,000 runs/month",
       "500K AI tokens",
-      "Team access (5 users)",
+      "Team access (15 users)",
       "API access",
       "Custom integrations",
       "Dedicated support",
+    ],
+    popular: false,
+  },
+  {
+    name: "Enterprise",
+    price: -1, // Custom pricing
+    features: [
+      "Unlimited automations",
+      "Unlimited runs",
+      "Unlimited AI tokens",
+      "Unlimited team members",
+      "White-label options",
+      "Custom SLA",
+      "24/7 dedicated support",
+      "On-premise deployment",
     ],
     popular: false,
   },
@@ -301,7 +316,7 @@ export default function BillingDashboard({
       {/* Available Plans */}
       <div>
         <h3 className="text-lg font-semibold mb-4">Available Plans</h3>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {PLANS.map((plan) => (
             <Card
               key={plan.name}
@@ -326,8 +341,14 @@ export default function BillingDashboard({
               <CardHeader>
                 <CardTitle className="text-lg">{plan.name}</CardTitle>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-bold">${plan.price}</span>
-                  <span className="text-muted-foreground">/month</span>
+                  {plan.price === -1 ? (
+                    <span className="text-2xl font-bold">Custom</span>
+                  ) : (
+                    <>
+                      <span className="text-3xl font-bold">${plan.price}</span>
+                      <span className="text-muted-foreground">/month</span>
+                    </>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -342,6 +363,13 @@ export default function BillingDashboard({
                 {plan.name === currentPlan.name ? (
                   <Button variant="outline" disabled className="w-full">
                     Current Plan
+                  </Button>
+                ) : plan.price === -1 ? (
+                  <Button
+                    className="w-full bg-gradient-to-r from-violet-600 to-indigo-600"
+                  >
+                    Contact Sales
+                    <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 ) : (
                   <Button

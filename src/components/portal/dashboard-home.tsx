@@ -85,8 +85,11 @@ export default function DashboardHome({
   const [runningAutomation, setRunningAutomation] = useState<string | null>(null);
 
   const activeAutomations = automations.filter((a) => a.automation_status === "active");
-  const successRate = 94; // This would come from actual data
-  const timeSaved = 12.5; // Hours saved this month
+
+  // Calculate client-friendly metrics (no failure rates shown)
+  const totalRuns = usage.automationRuns;
+  const timeSaved = Math.round((totalRuns * 15) / 60 * 10) / 10; // 15 min per task
+  const valueGenerated = Math.round(timeSaved * 50); // $50/hour value
 
   async function handleRunAutomation(automationId: string) {
     setRunningAutomation(automationId);
@@ -192,19 +195,19 @@ export default function DashboardHome({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-green-100 bg-gradient-to-br from-white to-green-50/30">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Success Rate</p>
-                <p className="text-3xl font-bold">{successRate}%</p>
+                <p className="text-sm text-muted-foreground">Value Generated</p>
+                <p className="text-3xl font-bold text-green-700">${valueGenerated.toLocaleString()}</p>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-green-100 to-emerald-100 flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-green-600" />
               </div>
             </div>
-            <p className="text-sm text-muted-foreground mt-4">
-              <span className="text-green-600 font-medium">+2.5%</span> from last month
+            <p className="text-sm text-green-600 mt-4">
+              <span className="font-medium">+{Math.round(timeSaved)}h</span> saved this month
             </p>
           </CardContent>
         </Card>
