@@ -60,10 +60,12 @@ import {
   PlusCircle,
   BarChart3,
   Send,
+  Inbox,
 } from "lucide-react";
 import { createSystemBuild, deleteSystemBuild, assignClientToSystem } from "@/app/actions/system-builds";
 import { useToast } from "@/components/ui/use-toast";
 import { formatDateTime } from "@/lib/utils";
+import { SubmissionsView } from "@/components/system-builder/submissions-view";
 import type { SystemBuild, SystemBuildResult, Client, SystemAction } from "@/types/database";
 
 interface SystemBuilderClientProps {
@@ -364,6 +366,14 @@ export function SystemBuilderClient({ initialBuilds, clients }: SystemBuilderCli
                 );
                 setSelectedBuild({ ...selectedBuild, actions });
               }}
+            />
+          )}
+
+          {/* Client Submissions */}
+          {selectedBuild && selectedBuild.client_id && (
+            <SubmissionsView
+              systemId={selectedBuild.id}
+              systemTitle={selectedBuild.title}
             />
           )}
 

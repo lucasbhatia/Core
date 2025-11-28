@@ -41,6 +41,7 @@ interface SystemPortalClientProps {
   system: SystemBuild;
   client: Client;
   activeActionId?: string;
+  initialActivity?: SystemActivity[];
 }
 
 // Icon mapping
@@ -64,12 +65,13 @@ export default function SystemPortalClient({
   system,
   client,
   activeActionId,
+  initialActivity = [],
 }: SystemPortalClientProps) {
   const router = useRouter();
   const actions = (system.actions || []) as SystemAction[];
   const [selectedAction, setSelectedAction] = useState<SystemAction | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [recentActivity, setRecentActivity] = useState<SystemActivity[]>([]);
+  const [recentActivity, setRecentActivity] = useState<SystemActivity[]>(initialActivity);
 
   // Open action if provided in URL
   useEffect(() => {
@@ -197,17 +199,24 @@ export default function SystemPortalClient({
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {recentActivity.map((activity) => (
-                      <div key={activity.id} className="flex gap-3 text-sm">
-                        <div className="w-2 h-2 bg-green-500 rounded-full mt-2" />
-                        <div>
-                          <p>{activity.description}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(activity.created_at).toLocaleString()}
-                          </p>
+                    {recentActivity.map((activity) => {
+                      const metadata = activity.metadata as { ref_number?: string } | null;
+                      return (
+                        <div key={activity.id} className="flex gap-3 text-sm border-l-2 border-green-500 pl-3">
+                          <div className="flex-1">
+                            <p className="text-gray-900">{activity.description}</p>
+                            {metadata?.ref_number && (
+                              <p className="text-xs font-mono text-primary">
+                                {metadata.ref_number}
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(activity.created_at).toLocaleString()}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
