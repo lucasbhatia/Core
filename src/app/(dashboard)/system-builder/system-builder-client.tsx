@@ -1155,6 +1155,7 @@ interface AutomationControlsProps {
 
 function AutomationControls({ system, onUpdate }: AutomationControlsProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
   const [runs, setRuns] = useState<AutomationRun[]>([]);
   const [stats, setStats] = useState<{
@@ -1236,6 +1237,48 @@ function AutomationControls({ system, onUpdate }: AutomationControlsProps) {
     }
   }
 
+  async function handleRunNow() {
+    setIsRunning(true);
+    try {
+      const response = await fetch("/api/automation/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ systemId: system.id, triggerType: "manual" }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Automation completed",
+          description: `Run completed in ${data.duration_ms}ms`,
+          variant: "success",
+        });
+        // Refresh runs and stats
+        const [runsData, statsData] = await Promise.all([
+          getAutomationRuns(system.id, 5),
+          getAutomationStats(system.id),
+        ]);
+        setRuns(runsData);
+        setStats(statsData);
+        onUpdate({
+          run_count: (system.run_count || 0) + 1,
+          last_run_at: new Date().toISOString(),
+        });
+      } else {
+        throw new Error(data.error || "Run failed");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to run automation",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRunning(false);
+    }
+  }
+
   const statusConfig: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
     active: {
       color: "bg-green-100 text-green-700 border-green-200",
@@ -1301,20 +1344,40 @@ function AutomationControls({ system, onUpdate }: AutomationControlsProps) {
         {/* Controls */}
         <div className="flex items-center gap-2">
           {isActive ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePause}
-              disabled={isLoading}
-              className="gap-2"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <PauseCircle className="w-4 h-4" />
-              )}
-              Pause Automation
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePause}
+                disabled={isLoading || isRunning}
+                className="gap-2"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <PauseCircle className="w-4 h-4" />
+                )}
+                Pause
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleRunNow}
+                disabled={isRunning || isLoading}
+                className="gap-2 bg-blue-600 hover:bg-blue-700"
+              >
+                {isRunning ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Running...
+                  </>
+                ) : (
+                  <>
+                    <PlayCircle className="w-4 h-4" />
+                    Run Now
+                  </>
+                )}
+              </Button>
+            </>
           ) : (
             <Button
               size="sm"
