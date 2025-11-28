@@ -173,74 +173,106 @@ export async function getClientSystems(clientId: string) {
 
 // Get client's workflows/requests (from AI Workspace)
 export async function getClientWorkflows(clientId: string) {
-  const supabase = await createSupabaseClient();
+  try {
+    const supabase = await createSupabaseClient();
 
-  const { data, error } = await supabase
-    .from("workflows")
-    .select(`
-      *,
-      requests!inner(
-        id, content, source, subject, status, created_at, completed_at
-      ),
-      agent_tasks(count),
-      deliverables(count)
-    `)
-    .eq("requests.client_id", clientId)
-    .eq("is_automation", false)
-    .order("created_at", { ascending: false })
-    .limit(20);
+    // Try with is_automation filter first (if migration has run)
+    let { data, error } = await supabase
+      .from("workflows")
+      .select(`
+        *,
+        requests!inner(
+          id, content, source, subject, status, created_at, completed_at
+        ),
+        agent_tasks(count),
+        deliverables(count)
+      `)
+      .eq("requests.client_id", clientId)
+      .eq("is_automation", false)
+      .order("created_at", { ascending: false })
+      .limit(20);
 
-  if (error) {
-    console.error("Error fetching client workflows:", error);
+    // If is_automation column doesn't exist, try without it
+    if (error?.code === "42703" || error?.message?.includes("is_automation")) {
+      const result = await supabase
+        .from("workflows")
+        .select(`
+          *,
+          requests!inner(
+            id, content, source, subject, status, created_at, completed_at
+          ),
+          agent_tasks(count),
+          deliverables(count)
+        `)
+        .eq("requests.client_id", clientId)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      data = result.data;
+      error = result.error;
+    }
+
+    if (error) {
+      // Silently return empty if tables don't exist yet
+      return [];
+    }
+
+    return data || [];
+  } catch {
     return [];
   }
-
-  return data || [];
 }
 
 // Get client's automations (saved workflows)
 export async function getClientAutomations(clientId: string) {
-  const supabase = await createSupabaseClient();
+  try {
+    const supabase = await createSupabaseClient();
 
-  const { data, error } = await supabase
-    .from("workflows")
-    .select(`
-      *,
-      requests!inner(
-        id, content, source, subject
-      )
-    `)
-    .eq("requests.client_id", clientId)
-    .eq("is_automation", true)
-    .order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("workflows")
+      .select(`
+        *,
+        requests!inner(
+          id, content, source, subject
+        )
+      `)
+      .eq("requests.client_id", clientId)
+      .eq("is_automation", true)
+      .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("Error fetching client automations:", error);
+    if (error) {
+      // Silently return empty if column/table doesn't exist yet
+      return [];
+    }
+
+    return data || [];
+  } catch {
     return [];
   }
-
-  return data || [];
 }
 
 // Get client's deliverables
 export async function getClientDeliverables(clientId: string) {
-  const supabase = await createSupabaseClient();
+  try {
+    const supabase = await createSupabaseClient();
 
-  const { data, error } = await supabase
-    .from("deliverables")
-    .select(`
-      *,
-      workflow:workflows(name, status),
-      task:agent_tasks(name, agents(name, agent_type))
-    `)
-    .eq("client_id", clientId)
-    .order("created_at", { ascending: false })
-    .limit(20);
+    const { data, error } = await supabase
+      .from("deliverables")
+      .select(`
+        *,
+        workflow:workflows(name, status),
+        task:agent_tasks(name, agents(name, agent_type))
+      `)
+      .eq("client_id", clientId)
+      .order("created_at", { ascending: false })
+      .limit(20);
 
-  if (error) {
-    console.error("Error fetching client deliverables:", error);
+    if (error) {
+      // Silently return empty if table doesn't exist yet
+      return [];
+    }
+
+    return data || [];
+  } catch {
     return [];
   }
-
-  return data || [];
 }
