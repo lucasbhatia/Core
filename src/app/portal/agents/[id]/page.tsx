@@ -40,6 +40,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { type DeployedAgent } from "@/lib/ai-agents/types";
+import type { Client } from "@/types/database";
 
 interface Execution {
   id: string;
@@ -56,6 +57,7 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const router = useRouter();
   const [agent, setAgent] = useState<DeployedAgent | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -71,8 +73,21 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
   const [apiEnabled, setApiEnabled] = useState(false);
 
   useEffect(() => {
+    fetchClient();
     fetchAgent();
   }, [id]);
+
+  const fetchClient = async () => {
+    try {
+      const res = await fetch("/api/portal/client");
+      if (res.ok) {
+        const data = await res.json();
+        setClient(data.client);
+      }
+    } catch (error) {
+      console.error("Error fetching client:", error);
+    }
+  };
 
   const fetchAgent = async () => {
     try {
@@ -191,19 +206,17 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  if (loading) {
+  if (loading || !client) {
     return (
-      <PortalShell pageTitle="Agent Details">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </PortalShell>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   if (!agent) {
     return (
-      <PortalShell pageTitle="Agent Not Found">
+      <PortalShell client={client} pageTitle="Agent Not Found">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
@@ -218,7 +231,7 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <PortalShell pageTitle={agent.name}>
+    <PortalShell client={client} pageTitle={agent.name}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

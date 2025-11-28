@@ -25,7 +25,8 @@ export type AgentCapability =
   | "scheduling"
   | "crm"
   | "social"
-  | "voice";
+  | "voice"
+  | "creative";
 
 export interface AgentTool {
   id: string;
@@ -47,7 +48,7 @@ export interface AgentTemplate {
   inputFields: {
     name: string;
     label: string;
-    type: "text" | "textarea" | "select" | "number" | "email" | "url" | "file";
+    type: "text" | "textarea" | "select" | "number" | "email" | "url" | "file" | "date";
     placeholder?: string;
     required?: boolean;
     options?: { value: string; label: string }[];

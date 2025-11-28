@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { type DeployedAgent } from "@/lib/ai-agents/types";
+import type { Client } from "@/types/database";
 
 interface Message {
   id: string;
@@ -41,6 +42,7 @@ interface Conversation {
 export default function AgentChatPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [agent, setAgent] = useState<DeployedAgent | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -50,9 +52,22 @@ export default function AgentChatPage({ params }: { params: Promise<{ id: string
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    fetchClient();
     fetchAgent();
     fetchConversations();
   }, [id]);
+
+  const fetchClient = async () => {
+    try {
+      const res = await fetch("/api/portal/client");
+      if (res.ok) {
+        const data = await res.json();
+        setClient(data.client);
+      }
+    } catch (error) {
+      console.error("Error fetching client:", error);
+    }
+  };
 
   useEffect(() => {
     if (currentConversation) {
@@ -178,19 +193,17 @@ export default function AgentChatPage({ params }: { params: Promise<{ id: string
     }
   };
 
-  if (loading) {
+  if (loading || !client) {
     return (
-      <PortalShell pageTitle="Agent Chat">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </PortalShell>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   if (!agent) {
     return (
-      <PortalShell pageTitle="Agent Not Found">
+      <PortalShell client={client} pageTitle="Agent Not Found">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Bot className="h-12 w-12 text-muted-foreground mb-4" />
@@ -205,7 +218,7 @@ export default function AgentChatPage({ params }: { params: Promise<{ id: string
   }
 
   return (
-    <PortalShell pageTitle={`Chat with ${agent.name}`}>
+    <PortalShell client={client} pageTitle={`Chat with ${agent.name}`}>
       <div className="flex flex-col h-[calc(100vh-12rem)]">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">

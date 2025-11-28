@@ -11,19 +11,6 @@ function getSupabase() {
   return createClient(url, key);
 }
 
-async function getClientSession() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("portal_session");
-  if (!sessionCookie) return null;
-
-  try {
-    const session = JSON.parse(sessionCookie.value);
-    return session;
-  } catch {
-    return null;
-  }
-}
-
 /**
  * GET /api/portal/automation/[id] - Get automation details for client
  */
@@ -32,22 +19,26 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getClientSession();
-    if (!session?.clientId) {
+    const cookieStore = await cookies();
+    const clientId = cookieStore.get("portal_client_id")?.value;
+
+    if (!clientId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
     const supabase = getSupabase();
 
+    // Query from workflows table (the unified automation source)
     const { data, error } = await supabase
-      .from("system_builds")
+      .from("workflows")
       .select("*")
       .eq("id", id)
-      .eq("client_id", session.clientId)
+      .eq("client_id", clientId)
+      .eq("is_automation", true)
       .single();
 
-    if (error) {
+    if (error || !data) {
       return NextResponse.json({ error: "Automation not found" }, { status: 404 });
     }
 
@@ -68,20 +59,23 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getClientSession();
-    if (!session?.clientId) {
+    const cookieStore = await cookies();
+    const clientId = cookieStore.get("portal_client_id")?.value;
+
+    if (!clientId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
     const supabase = getSupabase();
 
-    // Verify ownership
+    // Verify ownership in workflows table
     const { data: existing } = await supabase
-      .from("system_builds")
+      .from("workflows")
       .select("id, client_id")
       .eq("id", id)
-      .eq("client_id", session.clientId)
+      .eq("client_id", clientId)
+      .eq("is_automation", true)
       .single();
 
     if (!existing) {
@@ -90,9 +84,10 @@ export async function DELETE(
 
     // Archive (soft delete) - clients can't permanently delete
     const { data, error } = await supabase
-      .from("system_builds")
+      .from("workflows")
       .update({
         automation_status: "archived",
+        status: "archived",
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)

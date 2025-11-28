@@ -30,6 +30,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { getTemplateById, agentCategories, type AgentTemplate } from "@/lib/ai-agents/templates";
+import type { Client } from "@/types/database";
 
 interface InputField {
   name: string;
@@ -45,9 +46,28 @@ function AgentBuilderContent() {
   const searchParams = useSearchParams();
   const templateId = searchParams.get("template");
 
+  const [client, setClient] = useState<Client | null>(null);
+  const [clientLoading, setClientLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [template, setTemplate] = useState<AgentTemplate | null>(null);
+
+  useEffect(() => {
+    const fetchClient = async () => {
+      try {
+        const res = await fetch("/api/portal/client");
+        if (res.ok) {
+          const data = await res.json();
+          setClient(data.client);
+        }
+      } catch (error) {
+        console.error("Error fetching client:", error);
+      } finally {
+        setClientLoading(false);
+      }
+    };
+    fetchClient();
+  }, []);
 
   // Form state
   const [name, setName] = useState("");
@@ -141,8 +161,16 @@ function AgentBuilderContent() {
     }
   };
 
+  if (clientLoading || !client) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
-    <PortalShell pageTitle="Create Agent">
+    <PortalShell client={client} pageTitle="Create Agent">
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -510,11 +538,9 @@ function AgentBuilderContent() {
 export default function CreateAgentPage() {
   return (
     <Suspense fallback={
-      <PortalShell pageTitle="Create Agent">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </PortalShell>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     }>
       <AgentBuilderContent />
     </Suspense>
