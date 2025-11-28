@@ -374,6 +374,14 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
   );
 }
 
+// Helper to safely convert any value to string
+function safeString(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object") return JSON.stringify(value, null, 2);
+  return String(value);
+}
+
 function DownloadButton({ content, filename, label }: { content: string; filename: string; label?: string }) {
   const handleDownload = () => {
     const blob = new Blob([content], { type: "text/plain" });
@@ -438,45 +446,56 @@ function SystemBuildResultView({ result }: { result: SystemBuildResult }) {
         {/* AI Prompts Tab */}
         <TabsContent value="prompts" className="mt-4 space-y-4">
           {result.aiPrompts && result.aiPrompts.length > 0 ? (
-            result.aiPrompts.map((prompt, index) => (
-              <Card key={index}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-base">{prompt.name}</CardTitle>
-                      <CardDescription>{prompt.purpose}</CardDescription>
-                    </div>
-                    <CopyButton text={prompt.prompt} label="Copy Prompt" />
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">PROMPT (Ready to use with ChatGPT/Claude)</Label>
-                    <pre className="mt-1 whitespace-pre-wrap font-mono text-sm bg-muted p-3 rounded-lg max-h-48 overflow-y-auto">
-                      {prompt.prompt}
-                    </pre>
-                  </div>
-                  {prompt.variables && prompt.variables.length > 0 && (
-                    <div>
-                      <Label className="text-xs text-muted-foreground">VARIABLES TO REPLACE</Label>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {prompt.variables.map((v, i) => (
-                          <Badge key={i} variant="secondary">{`{{${v}}}`}</Badge>
-                        ))}
+            result.aiPrompts.map((prompt, index) => {
+              const promptAny = prompt as Record<string, unknown>;
+              const name = safeString(promptAny.name || `Prompt ${index + 1}`);
+              const purpose = safeString(promptAny.purpose || "");
+              const promptText = safeString(promptAny.prompt || "");
+              const exampleOutput = safeString(promptAny.exampleOutput || "");
+              const variables = Array.isArray(promptAny.variables)
+                ? promptAny.variables.filter((v): v is string => typeof v === "string")
+                : [];
+
+              return (
+                <Card key={index}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-base">{name}</CardTitle>
+                        <CardDescription>{purpose}</CardDescription>
                       </div>
+                      <CopyButton text={promptText} label="Copy Prompt" />
                     </div>
-                  )}
-                  {prompt.exampleOutput && (
+                  </CardHeader>
+                  <CardContent className="space-y-3">
                     <div>
-                      <Label className="text-xs text-muted-foreground">EXAMPLE OUTPUT</Label>
-                      <p className="mt-1 text-sm text-muted-foreground bg-muted/50 p-2 rounded">
-                        {prompt.exampleOutput}
-                      </p>
+                      <Label className="text-xs text-muted-foreground">PROMPT (Ready to use with ChatGPT/Claude)</Label>
+                      <pre className="mt-1 whitespace-pre-wrap font-mono text-sm bg-muted p-3 rounded-lg max-h-48 overflow-y-auto">
+                        {promptText}
+                      </pre>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))
+                    {variables.length > 0 && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">VARIABLES TO REPLACE</Label>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {variables.map((v, i) => (
+                            <Badge key={i} variant="secondary">{`{{${v}}}`}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {exampleOutput && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">EXAMPLE OUTPUT</Label>
+                        <p className="mt-1 text-sm text-muted-foreground bg-muted/50 p-2 rounded">
+                          {exampleOutput}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
           ) : (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
@@ -562,30 +581,38 @@ function SystemBuildResultView({ result }: { result: SystemBuildResult }) {
         {/* Code Snippets Tab */}
         <TabsContent value="code" className="mt-4 space-y-4">
           {result.codeSnippets && result.codeSnippets.length > 0 ? (
-            result.codeSnippets.map((snippet, index) => (
-              <Card key={index}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Code className="h-4 w-4" />
-                        {snippet.name}
-                      </CardTitle>
-                      <CardDescription>{snippet.description}</CardDescription>
+            result.codeSnippets.map((snippet, index) => {
+              const snippetAny = snippet as Record<string, unknown>;
+              const name = safeString(snippetAny.name || `Code Snippet ${index + 1}`);
+              const description = safeString(snippetAny.description || "");
+              const language = safeString(snippetAny.language || "text");
+              const code = safeString(snippetAny.code || "");
+
+              return (
+                <Card key={index}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Code className="h-4 w-4" />
+                          {name}
+                        </CardTitle>
+                        <CardDescription>{description}</CardDescription>
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge variant="outline">{language}</Badge>
+                        <CopyButton text={code} />
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Badge variant="outline">{snippet.language}</Badge>
-                      <CopyButton text={snippet.code} />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <pre className="whitespace-pre-wrap font-mono text-sm bg-zinc-900 text-zinc-100 p-4 rounded-lg overflow-x-auto">
-                    {snippet.code}
-                  </pre>
-                </CardContent>
-              </Card>
-            ))
+                  </CardHeader>
+                  <CardContent>
+                    <pre className="whitespace-pre-wrap font-mono text-sm bg-zinc-900 text-zinc-100 p-4 rounded-lg overflow-x-auto">
+                      {code}
+                    </pre>
+                  </CardContent>
+                </Card>
+              );
+            })
           ) : (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
@@ -598,46 +625,57 @@ function SystemBuildResultView({ result }: { result: SystemBuildResult }) {
         {/* Email Templates Tab */}
         <TabsContent value="emails" className="mt-4 space-y-4">
           {result.emailTemplates && result.emailTemplates.length > 0 ? (
-            result.emailTemplates.map((template, index) => (
-              <Card key={index}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Mail className="h-4 w-4" />
-                        {template.name}
-                      </CardTitle>
+            result.emailTemplates.map((template, index) => {
+              // Handle various formats AI might return
+              const templateAny = template as Record<string, unknown>;
+              const name = safeString(templateAny.name || `Email Template ${index + 1}`);
+              const subject = safeString(templateAny.subject || "");
+              const body = safeString(templateAny.body || "");
+              const variables = Array.isArray(templateAny.variables)
+                ? templateAny.variables.filter((v): v is string => typeof v === "string")
+                : [];
+
+              return (
+                <Card key={index}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Mail className="h-4 w-4" />
+                          {name}
+                        </CardTitle>
+                      </div>
+                      <CopyButton text={`Subject: ${subject}\n\n${body}`} label="Copy All" />
                     </div>
-                    <CopyButton text={`Subject: ${template.subject}\n\n${template.body}`} label="Copy All" />
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">SUBJECT</Label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <p className="font-medium flex-1">{template.subject}</p>
-                      <CopyButton text={template.subject} label="Copy" />
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">BODY</Label>
-                    <pre className="mt-1 whitespace-pre-wrap font-sans text-sm bg-muted p-3 rounded-lg">
-                      {template.body}
-                    </pre>
-                  </div>
-                  {template.variables && template.variables.length > 0 && (
+                  </CardHeader>
+                  <CardContent className="space-y-3">
                     <div>
-                      <Label className="text-xs text-muted-foreground">VARIABLES TO PERSONALIZE</Label>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {template.variables.map((v, i) => (
-                          <Badge key={i} variant="secondary">{`{{${v}}}`}</Badge>
-                        ))}
+                      <Label className="text-xs text-muted-foreground">SUBJECT</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="font-medium flex-1">{subject}</p>
+                        <CopyButton text={subject} label="Copy" />
                       </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))
+                    <div>
+                      <Label className="text-xs text-muted-foreground">BODY</Label>
+                      <pre className="mt-1 whitespace-pre-wrap font-sans text-sm bg-muted p-3 rounded-lg">
+                        {body}
+                      </pre>
+                    </div>
+                    {variables.length > 0 && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">VARIABLES TO PERSONALIZE</Label>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {variables.map((v, i) => (
+                            <Badge key={i} variant="secondary">{`{{${v}}}`}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
           ) : (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
@@ -650,47 +688,57 @@ function SystemBuildResultView({ result }: { result: SystemBuildResult }) {
         {/* API Config Tab */}
         <TabsContent value="api" className="mt-4 space-y-4">
           {result.apiConfig && result.apiConfig.length > 0 ? (
-            result.apiConfig.map((api, index) => (
-              <Card key={index}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
+            result.apiConfig.map((api, index) => {
+              const apiAny = api as Record<string, unknown>;
+              const name = safeString(apiAny.name || `API ${index + 1}`);
+              const description = safeString(apiAny.description || "");
+              const method = safeString(apiAny.method || "GET");
+              const endpoint = safeString(apiAny.endpoint || "");
+              const headers = safeString(apiAny.headers || "");
+              const body = safeString(apiAny.body || "");
+
+              return (
+                <Card key={index}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Zap className="h-4 w-4" />
+                          {name}
+                        </CardTitle>
+                        <CardDescription>{description}</CardDescription>
+                      </div>
+                      <Badge>{method}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
                     <div>
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Zap className="h-4 w-4" />
-                        {api.name}
-                      </CardTitle>
-                      <CardDescription>{api.description}</CardDescription>
+                      <Label className="text-xs text-muted-foreground">ENDPOINT</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <code className="flex-1 text-sm bg-muted px-2 py-1 rounded">{endpoint}</code>
+                        <CopyButton text={endpoint} />
+                      </div>
                     </div>
-                    <Badge>{api.method}</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">ENDPOINT</Label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <code className="flex-1 text-sm bg-muted px-2 py-1 rounded">{api.endpoint}</code>
-                      <CopyButton text={api.endpoint} />
-                    </div>
-                  </div>
-                  {api.headers && (
-                    <div>
-                      <Label className="text-xs text-muted-foreground">HEADERS</Label>
-                      <pre className="mt-1 text-xs bg-zinc-900 text-zinc-100 p-2 rounded overflow-x-auto">
-                        {api.headers}
-                      </pre>
-                    </div>
-                  )}
-                  {api.body && (
-                    <div>
-                      <Label className="text-xs text-muted-foreground">REQUEST BODY</Label>
-                      <pre className="mt-1 text-xs bg-zinc-900 text-zinc-100 p-2 rounded overflow-x-auto">
-                        {api.body}
-                      </pre>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))
+                    {headers && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">HEADERS</Label>
+                        <pre className="mt-1 text-xs bg-zinc-900 text-zinc-100 p-2 rounded overflow-x-auto">
+                          {headers}
+                        </pre>
+                      </div>
+                    )}
+                    {body && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">REQUEST BODY</Label>
+                        <pre className="mt-1 text-xs bg-zinc-900 text-zinc-100 p-2 rounded overflow-x-auto">
+                          {body}
+                        </pre>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
           ) : (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
