@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Client, SystemBuild, SystemAction } from "@/types/database";
+import type { Client } from "@/types/database";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,15 +13,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { logoutPortal } from "@/app/actions/portal-auth";
 import {
   LogOut,
   Zap,
-  PlusCircle,
-  BarChart3,
-  Send,
-  MessageSquare,
-  ChevronRight,
   Building2,
   User,
   Clock,
@@ -33,8 +34,11 @@ import {
   Download,
   Inbox,
   Bot,
+  Eye,
+  Copy,
+  CheckCheck,
 } from "lucide-react";
-import Link from "next/link";
+import { formatDistanceToNow } from "date-fns";
 
 // Type definitions for workflow data
 interface Workflow {
@@ -86,43 +90,29 @@ interface Deliverable {
 
 interface PortalDashboardProps {
   client: Client;
-  systems: SystemBuild[];
+  systems?: unknown[]; // Legacy - kept for compatibility but not displayed
   workflows?: Workflow[];
   automations?: Workflow[];
   deliverables?: Deliverable[];
-}
-
-// Icon mapping for action types
-const actionIcons: Record<string, React.ReactNode> = {
-  form: <PlusCircle className="w-5 h-5" />,
-  dashboard: <BarChart3 className="w-5 h-5" />,
-  trigger: <Send className="w-5 h-5" />,
-  ai_chat: <MessageSquare className="w-5 h-5" />,
-};
-
-// Get icon by name or fallback
-function getActionIcon(iconName: string, type: string) {
-  const iconMap: Record<string, React.ReactNode> = {
-    "plus-circle": <PlusCircle className="w-5 h-5" />,
-    "bar-chart": <BarChart3 className="w-5 h-5" />,
-    "send": <Send className="w-5 h-5" />,
-    "message-square": <MessageSquare className="w-5 h-5" />,
-    "zap": <Zap className="w-5 h-5" />,
-  };
-  return iconMap[iconName] || actionIcons[type] || <Zap className="w-5 h-5" />;
 }
 
 // Status badge component
 function StatusBadge({ status }: { status: string }) {
   const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode; label: string }> = {
     pending: { variant: "secondary", icon: <Clock className="w-3 h-3" />, label: "Pending" },
+    classifying: { variant: "secondary", icon: <Loader2 className="w-3 h-3 animate-spin" />, label: "Processing" },
+    planning: { variant: "secondary", icon: <Loader2 className="w-3 h-3 animate-spin" />, label: "Planning" },
+    in_progress: { variant: "default", icon: <Loader2 className="w-3 h-3 animate-spin" />, label: "In Progress" },
     running: { variant: "default", icon: <Loader2 className="w-3 h-3 animate-spin" />, label: "Running" },
-    completed: { variant: "secondary", icon: <CheckCircle className="w-3 h-3" />, label: "Completed" },
+    review: { variant: "secondary", icon: <Eye className="w-3 h-3" />, label: "In Review" },
+    completed: { variant: "default", icon: <CheckCircle className="w-3 h-3" />, label: "Completed" },
+    delivered: { variant: "default", icon: <CheckCheck className="w-3 h-3" />, label: "Delivered" },
     failed: { variant: "destructive", icon: <AlertCircle className="w-3 h-3" />, label: "Failed" },
     draft: { variant: "outline", icon: <FileText className="w-3 h-3" />, label: "Draft" },
     active: { variant: "default", icon: <Play className="w-3 h-3" />, label: "Active" },
     inactive: { variant: "secondary", icon: <Clock className="w-3 h-3" />, label: "Inactive" },
     paused: { variant: "outline", icon: <Clock className="w-3 h-3" />, label: "Paused" },
+    approved: { variant: "default", icon: <CheckCircle className="w-3 h-3" />, label: "Approved" },
   };
 
   const config = statusConfig[status] || statusConfig.pending;
@@ -137,13 +127,14 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function PortalDashboard({
   client,
-  systems,
   workflows = [],
   automations = [],
   deliverables = [],
 }: PortalDashboardProps) {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [selectedDeliverable, setSelectedDeliverable] = useState<Deliverable | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function handleLogout() {
     setIsLoggingOut(true);
@@ -151,8 +142,15 @@ export default function PortalDashboard({
     router.push("/portal/login");
   }
 
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   // Count active items
-  const activeWorkflows = workflows.filter((w) => w.status === "running").length;
+  const activeJobs = workflows.filter((w) => ["running", "in_progress", "planning", "classifying"].includes(w.status)).length;
+  const completedJobs = workflows.filter((w) => w.status === "completed").length;
   const activeAutomations = automations.filter((a) => a.automation_status === "active").length;
 
   return (
@@ -200,11 +198,11 @@ export default function PortalDashboard({
             Welcome back, {client.name.split(" ")[0]}!
           </h1>
           <p className="text-muted-foreground mt-1">
-            View your requests, deliverables, and automations
+            View your jobs, deliverables, and automations
           </p>
         </div>
 
-        {/* Company Info + Stats */}
+        {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-4 mb-8">
           <Card>
             <CardContent className="flex items-center gap-4 py-4">
@@ -212,7 +210,7 @@ export default function PortalDashboard({
                 <Building2 className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <p className="font-medium">{client.company}</p>
+                <p className="font-medium">{client.company || client.name}</p>
                 <p className="text-sm text-muted-foreground">{client.email}</p>
               </div>
             </CardContent>
@@ -221,10 +219,15 @@ export default function PortalDashboard({
           <Card>
             <CardContent className="py-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Active Workflows</p>
-                <Loader2 className="w-4 h-4 text-blue-500" />
+                <p className="text-sm text-muted-foreground">Active Jobs</p>
+                {activeJobs > 0 ? (
+                  <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                ) : (
+                  <Inbox className="w-4 h-4 text-gray-400" />
+                )}
               </div>
-              <p className="text-2xl font-bold">{activeWorkflows}</p>
+              <p className="text-2xl font-bold">{activeJobs}</p>
+              <p className="text-xs text-muted-foreground mt-1">{completedJobs} completed</p>
             </CardContent>
           </Card>
 
@@ -235,71 +238,66 @@ export default function PortalDashboard({
                 <FileText className="w-4 h-4 text-green-500" />
               </div>
               <p className="text-2xl font-bold">{deliverables.length}</p>
+              <p className="text-xs text-muted-foreground mt-1">Ready to view</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent className="py-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Active Automations</p>
+                <p className="text-sm text-muted-foreground">Automations</p>
                 <Bot className="w-4 h-4 text-purple-500" />
               </div>
-              <p className="text-2xl font-bold">{activeAutomations}</p>
+              <p className="text-2xl font-bold">{automations.length}</p>
+              <p className="text-xs text-muted-foreground mt-1">{activeAutomations} active</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="requests" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="requests" className="flex items-center gap-2">
+        <Tabs defaultValue="jobs" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="jobs" className="flex items-center gap-2">
               <Inbox className="w-4 h-4" />
-              <span className="hidden sm:inline">Requests</span>
+              <span>Jobs</span>
               {workflows.length > 0 && (
                 <Badge variant="secondary" className="ml-1">{workflows.length}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="deliverables" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
-              <span className="hidden sm:inline">Deliverables</span>
+              <span>Deliverables</span>
               {deliverables.length > 0 && (
                 <Badge variant="secondary" className="ml-1">{deliverables.length}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="automations" className="flex items-center gap-2">
               <Bot className="w-4 h-4" />
-              <span className="hidden sm:inline">Automations</span>
+              <span>Automations</span>
               {automations.length > 0 && (
                 <Badge variant="secondary" className="ml-1">{automations.length}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="systems" className="flex items-center gap-2">
-              <Zap className="w-4 h-4" />
-              <span className="hidden sm:inline">Systems</span>
-              {systems.length > 0 && (
-                <Badge variant="secondary" className="ml-1">{systems.length}</Badge>
-              )}
-            </TabsTrigger>
           </TabsList>
 
-          {/* Requests Tab */}
-          <TabsContent value="requests">
+          {/* Jobs Tab */}
+          <TabsContent value="jobs">
             {workflows.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Inbox className="w-8 h-8 text-gray-400" />
                   </div>
-                  <h3 className="font-medium text-gray-900 mb-1">No Requests Yet</h3>
+                  <h3 className="font-medium text-gray-900 mb-1">No Jobs Yet</h3>
                   <p className="text-muted-foreground">
-                    Your requests and workflows will appear here.
+                    When work is submitted for you, it will appear here.
                   </p>
                 </CardContent>
               </Card>
             ) : (
               <div className="space-y-4">
                 {workflows.map((workflow) => (
-                  <WorkflowCard key={workflow.id} workflow={workflow} />
+                  <JobCard key={workflow.id} workflow={workflow} />
                 ))}
               </div>
             )}
@@ -315,14 +313,18 @@ export default function PortalDashboard({
                   </div>
                   <h3 className="font-medium text-gray-900 mb-1">No Deliverables Yet</h3>
                   <p className="text-muted-foreground">
-                    Completed work will appear here for download.
+                    Completed work will appear here for you to view and download.
                   </p>
                 </CardContent>
               </Card>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 {deliverables.map((deliverable) => (
-                  <DeliverableCard key={deliverable.id} deliverable={deliverable} />
+                  <DeliverableCard
+                    key={deliverable.id}
+                    deliverable={deliverable}
+                    onView={() => setSelectedDeliverable(deliverable)}
+                  />
                 ))}
               </div>
             )}
@@ -338,7 +340,7 @@ export default function PortalDashboard({
                   </div>
                   <h3 className="font-medium text-gray-900 mb-1">No Automations Yet</h3>
                   <p className="text-muted-foreground">
-                    Your saved automations will appear here.
+                    Saved automations for recurring tasks will appear here.
                   </p>
                 </CardContent>
               </Card>
@@ -350,37 +352,59 @@ export default function PortalDashboard({
               </div>
             )}
           </TabsContent>
-
-          {/* Systems Tab */}
-          <TabsContent value="systems">
-            {systems.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Zap className="w-8 h-8 text-gray-400" />
-                  </div>
-                  <h3 className="font-medium text-gray-900 mb-1">No Systems Yet</h3>
-                  <p className="text-muted-foreground">
-                    Your automation systems will appear here once they&apos;re ready.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {systems.map((system) => (
-                  <SystemCard key={system.id} system={system} />
-                ))}
-              </div>
-            )}
-          </TabsContent>
         </Tabs>
       </main>
+
+      {/* Deliverable View Dialog */}
+      <Dialog open={!!selectedDeliverable} onOpenChange={() => setSelectedDeliverable(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              {selectedDeliverable?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedDeliverable?.description && (
+              <p className="text-sm text-muted-foreground">{selectedDeliverable.description}</p>
+            )}
+            {selectedDeliverable?.workflow && (
+              <div className="flex items-center gap-2 text-sm">
+                <Badge variant="outline">From: {selectedDeliverable.workflow.name}</Badge>
+                <StatusBadge status={selectedDeliverable.status} />
+              </div>
+            )}
+            <div className="h-[400px] w-full rounded-md border p-4 overflow-auto">
+              <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+                {selectedDeliverable?.content || "No content available"}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => selectedDeliverable?.content && copyToClipboard(selectedDeliverable.content)}
+              >
+                {copied ? <CheckCheck className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+                {copied ? "Copied!" : "Copy"}
+              </Button>
+              {selectedDeliverable?.file_url && (
+                <Button asChild>
+                  <a href={selectedDeliverable.file_url} download>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </a>
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-// Workflow Card Component
-function WorkflowCard({ workflow }: { workflow: Workflow }) {
+// Job Card Component
+function JobCard({ workflow }: { workflow: Workflow }) {
   const taskCount = workflow.agent_tasks?.[0]?.count || 0;
   const deliverableCount = workflow.deliverables?.[0]?.count || 0;
 
@@ -388,34 +412,35 @@ function WorkflowCard({ workflow }: { workflow: Workflow }) {
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-base">{workflow.name}</CardTitle>
-            <CardDescription className="line-clamp-2">
-              {workflow.requests?.subject || workflow.requests?.content?.slice(0, 100)}...
-            </CardDescription>
+          <div className="space-y-1 flex-1 min-w-0">
+            <CardTitle className="text-base truncate">{workflow.name}</CardTitle>
+            {workflow.requests?.subject && (
+              <CardDescription className="line-clamp-1">
+                {workflow.requests.subject}
+              </CardDescription>
+            )}
           </div>
           <StatusBadge status={workflow.status} />
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+        <div className="flex items-center flex-wrap gap-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
             <Clock className="w-4 h-4" />
-            {new Date(workflow.created_at).toLocaleDateString()}
+            {formatDistanceToNow(new Date(workflow.created_at), { addSuffix: true })}
           </span>
-          <span className="flex items-center gap-1">
-            <Bot className="w-4 h-4" />
-            {taskCount} tasks
-          </span>
-          {deliverableCount > 0 && (
+          {taskCount > 0 && (
             <span className="flex items-center gap-1">
-              <FileText className="w-4 h-4" />
-              {deliverableCount} deliverables
+              <Bot className="w-4 h-4" />
+              {taskCount} {taskCount === 1 ? "task" : "tasks"}
             </span>
           )}
-          <Badge variant="outline" className="ml-auto">
-            {workflow.requests?.source || "dashboard"}
-          </Badge>
+          {deliverableCount > 0 && (
+            <span className="flex items-center gap-1 text-green-600">
+              <FileText className="w-4 h-4" />
+              {deliverableCount} {deliverableCount === 1 ? "deliverable" : "deliverables"}
+            </span>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -423,15 +448,15 @@ function WorkflowCard({ workflow }: { workflow: Workflow }) {
 }
 
 // Deliverable Card Component
-function DeliverableCard({ deliverable }: { deliverable: Deliverable }) {
+function DeliverableCard({ deliverable, onView }: { deliverable: Deliverable; onView: () => void }) {
   return (
-    <Card>
+    <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
-          <div className="space-y-1">
+          <div className="space-y-1 flex-1 min-w-0">
             <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="w-4 h-4 text-primary" />
-              {deliverable.name}
+              <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+              <span className="truncate">{deliverable.name}</span>
             </CardTitle>
             {deliverable.description && (
               <CardDescription className="line-clamp-2">
@@ -447,15 +472,15 @@ function DeliverableCard({ deliverable }: { deliverable: Deliverable }) {
           <div className="text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <Clock className="w-4 h-4" />
-              {new Date(deliverable.created_at).toLocaleDateString()}
+              {formatDistanceToNow(new Date(deliverable.created_at), { addSuffix: true })}
             </span>
             {deliverable.workflow && (
-              <p className="mt-1">From: {deliverable.workflow.name}</p>
+              <p className="mt-1 text-xs">From: {deliverable.workflow.name}</p>
             )}
           </div>
           {(deliverable.content || deliverable.file_url) && (
-            <Button variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
+            <Button variant="outline" size="sm" onClick={onView}>
+              <Eye className="w-4 h-4 mr-2" />
               View
             </Button>
           )}
@@ -468,10 +493,18 @@ function DeliverableCard({ deliverable }: { deliverable: Deliverable }) {
 // Automation Card Component
 function AutomationCard({ automation }: { automation: Workflow }) {
   const triggerLabels: Record<string, string> = {
-    manual: "Manual trigger",
-    scheduled: "Scheduled",
-    webhook: "Webhook trigger",
-    email: "Email trigger",
+    manual: "Run on demand",
+    scheduled: "Runs on schedule",
+    webhook: "Triggered by webhook",
+    email: "Triggered by email",
+  };
+
+  const scheduleLabels: Record<string, string> = {
+    "manual": "",
+    "0 * * * *": "Every hour",
+    "0 0 * * *": "Daily at midnight",
+    "0 9 * * 1-5": "Weekdays at 9am",
+    "0 0 * * 0": "Weekly on Sunday",
   };
 
   return (
@@ -485,7 +518,9 @@ function AutomationCard({ automation }: { automation: Workflow }) {
             </CardTitle>
             <CardDescription>
               {triggerLabels[automation.automation_trigger || "manual"]}
-              {automation.automation_schedule && ` - ${automation.automation_schedule}`}
+              {automation.automation_schedule && scheduleLabels[automation.automation_schedule] && (
+                <> - {scheduleLabels[automation.automation_schedule]}</>
+              )}
             </CardDescription>
           </div>
           <StatusBadge status={automation.automation_status || "inactive"} />
@@ -496,81 +531,16 @@ function AutomationCard({ automation }: { automation: Workflow }) {
           {automation.last_run_at && (
             <span className="flex items-center gap-1">
               <Clock className="w-4 h-4" />
-              Last: {new Date(automation.last_run_at).toLocaleDateString()}
+              Last run: {formatDistanceToNow(new Date(automation.last_run_at), { addSuffix: true })}
             </span>
           )}
           {automation.run_count !== undefined && automation.run_count > 0 && (
             <span className="flex items-center gap-1">
               <Play className="w-4 h-4" />
-              {automation.run_count} runs
+              {automation.run_count} {automation.run_count === 1 ? "run" : "runs"}
             </span>
           )}
         </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// System Card Component (legacy)
-function SystemCard({ system }: { system: SystemBuild }) {
-  const actions = (system.actions || []) as SystemAction[];
-
-  return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="text-lg">{system.title}</CardTitle>
-            <CardDescription className="mt-1 line-clamp-2">
-              {system.result?.systemOverview || system.prompt}
-            </CardDescription>
-          </div>
-          <Badge variant="secondary" className="bg-green-100 text-green-700">
-            Active
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {actions.length > 0 ? (
-          <div className="space-y-2">
-            {actions.slice(0, 3).map((action) => (
-              <Link
-                key={action.id}
-                href={`/portal/systems/${system.id}?action=${action.id}`}
-                className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-white rounded-md flex items-center justify-center shadow-sm">
-                    {getActionIcon(action.icon, action.type)}
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">{action.label}</p>
-                    <p className="text-xs text-muted-foreground">{action.description}</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-              </Link>
-            ))}
-            {actions.length > 3 && (
-              <Link
-                href={`/portal/systems/${system.id}`}
-                className="block text-center text-sm text-primary hover:underline pt-2"
-              >
-                View all {actions.length} actions
-              </Link>
-            )}
-          </div>
-        ) : (
-          <div className="text-center py-4 text-sm text-muted-foreground">
-            <p>System is being configured...</p>
-            <Link
-              href={`/portal/systems/${system.id}`}
-              className="text-primary hover:underline"
-            >
-              View Details
-            </Link>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
