@@ -28,6 +28,10 @@ import {
   Users,
   Sparkles,
   UserPlus,
+  CheckSquare,
+  Calendar,
+  FolderKanban,
+  MessageSquare,
 } from "lucide-react";
 
 interface SidebarItem {
@@ -45,24 +49,32 @@ interface SidebarGroup {
 
 const sidebarGroups: SidebarGroup[] = [
   {
-    title: "Main",
+    title: "Overview",
     items: [
       { label: "Dashboard", href: "/portal", icon: LayoutDashboard },
-      { label: "AI Workforce", href: "/portal/workforce", icon: UserPlus, badge: "New" },
-      { label: "My Automations", href: "/portal/automations", icon: Bot },
-      { label: "Results Library", href: "/portal/deliverables", icon: FolderOpen },
     ],
   },
   {
-    title: "Build",
+    title: "Productivity",
     items: [
-      { label: "Create Automation", href: "/portal/builder", icon: PlusCircle },
+      { label: "Tasks", href: "/portal/tasks", icon: CheckSquare },
+      { label: "Calendar", href: "/portal/calendar", icon: Calendar },
+      { label: "Projects", href: "/portal/projects", icon: FolderKanban },
+    ],
+  },
+  {
+    title: "AI Tools",
+    items: [
+      { label: "AI Workforce", href: "/portal/workforce", icon: UserPlus, badge: "New" },
+      { label: "Automations", href: "/portal/automations", icon: Bot },
+      { label: "Create New", href: "/portal/builder", icon: PlusCircle },
       { label: "Templates", href: "/portal/templates", icon: Sparkles },
     ],
   },
   {
-    title: "Insights",
+    title: "Results",
     items: [
+      { label: "Deliverables", href: "/portal/deliverables", icon: FolderOpen },
       { label: "Analytics", href: "/portal/analytics", icon: BarChart3 },
       { label: "Activity", href: "/portal/activity", icon: Bell },
     ],
@@ -70,7 +82,7 @@ const sidebarGroups: SidebarGroup[] = [
   {
     title: "Account",
     items: [
-      { label: "Usage & Billing", href: "/portal/billing", icon: CreditCard },
+      { label: "Billing", href: "/portal/billing", icon: CreditCard },
       { label: "Team", href: "/portal/team", icon: Users },
       { label: "Settings", href: "/portal/settings", icon: Settings },
     ],
