@@ -17,8 +17,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -26,6 +28,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Inbox,
   Workflow,
@@ -41,8 +49,16 @@ import {
   FileText,
   Users,
   Zap,
+  MoreVertical,
+  Pause,
+  Save,
+  Calendar,
+  Webhook,
+  Copy,
+  RefreshCw,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Request {
   id: string;
@@ -59,13 +75,22 @@ interface Request {
   workflows: { id: string; name: string; status: string; current_step: number; total_steps: number }[] | null;
 }
 
-interface Workflow {
+interface WorkflowType {
   id: string;
   name: string;
+  description: string | null;
   status: string;
   current_step: number;
   total_steps: number;
   created_at: string;
+  is_automation: boolean;
+  automation_status: string | null;
+  automation_schedule: string | null;
+  automation_trigger: string | null;
+  last_run_at: string | null;
+  run_count: number;
+  webhook_url: string | null;
+  webhook_secret: string | null;
   requests: { id: string; subject: string | null; content: string } | null;
   clients: { id: string; name: string; email: string } | null;
   agent_tasks: { id: string; name: string; status: string; agent_id: string }[];
@@ -81,7 +106,7 @@ interface Agent {
 
 interface Props {
   initialRequests: Request[];
-  initialWorkflows: Workflow[];
+  initialWorkflows: WorkflowType[];
   agents: Agent[];
   stats: {
     totalRequests: number;
@@ -103,6 +128,14 @@ export function WorkspaceClient({
   const [newRequestContent, setNewRequestContent] = useState("");
   const [selectedClient, setSelectedClient] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveAsAutomationWorkflow, setSaveAsAutomationWorkflow] = useState<WorkflowType | null>(null);
+  const [automationName, setAutomationName] = useState("");
+  const [automationSchedule, setAutomationSchedule] = useState("manual");
+  const { toast } = useToast();
+
+  // Filter automations from workflows
+  const automations = workflows.filter(w => w.is_automation);
+  const activeWorkflows = workflows.filter(w => !w.is_automation && ["running", "draft", "approved"].includes(w.status));
 
   const handleSubmitRequest = async () => {
     if (!newRequestContent.trim()) return;
@@ -120,17 +153,84 @@ export function WorkspaceClient({
       });
 
       if (response.ok) {
+        toast({ title: "Request submitted", description: "AI is processing your request..." });
         setNewRequestContent("");
         setSelectedClient("");
         setIsNewRequestOpen(false);
-        // Refresh the page to show new request
         window.location.reload();
+      } else {
+        toast({ title: "Error", description: "Failed to submit request", variant: "destructive" });
       }
     } catch (error) {
-      console.error("Failed to submit request:", error);
+      toast({ title: "Error", description: "Failed to submit request", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSaveAsAutomation = async () => {
+    if (!saveAsAutomationWorkflow || !automationName.trim()) return;
+
+    try {
+      const response = await fetch("/api/workspace/automation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workflowId: saveAsAutomationWorkflow.id,
+          name: automationName,
+          schedule: automationSchedule,
+        }),
+      });
+
+      if (response.ok) {
+        toast({ title: "Automation created", description: "You can now run this automation anytime" });
+        setSaveAsAutomationWorkflow(null);
+        setAutomationName("");
+        setAutomationSchedule("manual");
+        window.location.reload();
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to save automation", variant: "destructive" });
+    }
+  };
+
+  const handleRunAutomation = async (workflowId: string) => {
+    try {
+      const response = await fetch("/api/workspace/automation/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workflowId }),
+      });
+
+      if (response.ok) {
+        toast({ title: "Automation started", description: "Running now..." });
+        window.location.reload();
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to run automation", variant: "destructive" });
+    }
+  };
+
+  const handleToggleAutomation = async (workflowId: string, newStatus: string) => {
+    try {
+      const response = await fetch("/api/workspace/automation/toggle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workflowId, status: newStatus }),
+      });
+
+      if (response.ok) {
+        toast({ title: `Automation ${newStatus}`, description: `Automation is now ${newStatus}` });
+        window.location.reload();
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update automation", variant: "destructive" });
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copied", description: "Copied to clipboard" });
   };
 
   const getStatusBadge = (status: string) => {
@@ -144,6 +244,9 @@ export function WorkspaceClient({
       completed: { variant: "default", icon: <CheckCircle2 className="h-3 w-3" /> },
       delivered: { variant: "default", icon: <Send className="h-3 w-3" /> },
       failed: { variant: "destructive", icon: <XCircle className="h-3 w-3" /> },
+      active: { variant: "default", icon: <Play className="h-3 w-3" /> },
+      inactive: { variant: "outline", icon: <Pause className="h-3 w-3" /> },
+      paused: { variant: "secondary", icon: <Pause className="h-3 w-3" /> },
     };
 
     const config = variants[status] || variants.pending;
@@ -169,6 +272,18 @@ export function WorkspaceClient({
     );
   };
 
+  const getScheduleLabel = (schedule: string | null) => {
+    const labels: Record<string, string> = {
+      manual: "Manual trigger",
+      "*/5 * * * *": "Every 5 minutes",
+      "0 * * * *": "Every hour",
+      "0 0 * * *": "Daily at midnight",
+      "0 9 * * 1-5": "Weekdays at 9am",
+      "0 0 * * 0": "Weekly (Sunday)",
+    };
+    return labels[schedule || "manual"] || schedule || "Manual trigger";
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -176,7 +291,7 @@ export function WorkspaceClient({
         <div>
           <h1 className="text-3xl font-bold">AI Workspace</h1>
           <p className="text-muted-foreground">
-            Manage requests, workflows, and AI agents
+            Manage requests, automations, and AI agents
           </p>
         </div>
         <Dialog open={isNewRequestOpen} onOpenChange={setIsNewRequestOpen}>
@@ -208,7 +323,6 @@ export function WorkspaceClient({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">No client</SelectItem>
-                    {/* Add clients here */}
                   </SelectContent>
                 </Select>
               </div>
@@ -266,11 +380,11 @@ export function WorkspaceClient({
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-purple-100 rounded-lg">
-                <Workflow className="h-6 w-6 text-purple-600" />
+                <Zap className="h-6 w-6 text-purple-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats.activeWorkflows}</p>
-                <p className="text-sm text-muted-foreground">Active Workflows</p>
+                <p className="text-2xl font-bold">{automations.length}</p>
+                <p className="text-sm text-muted-foreground">Automations</p>
               </div>
             </div>
           </CardContent>
@@ -297,9 +411,13 @@ export function WorkspaceClient({
             <Inbox className="h-4 w-4" />
             Requests
           </TabsTrigger>
+          <TabsTrigger value="automations" className="flex items-center gap-2">
+            <Zap className="h-4 w-4" />
+            Automations
+          </TabsTrigger>
           <TabsTrigger value="workflows" className="flex items-center gap-2">
             <Workflow className="h-4 w-4" />
-            Workflows
+            Active Workflows
           </TabsTrigger>
           <TabsTrigger value="agents" className="flex items-center gap-2">
             <Bot className="h-4 w-4" />
@@ -360,21 +478,39 @@ export function WorkspaceClient({
                           </span>
                         </div>
                       </div>
-                      {request.workflows && request.workflows[0] && (
-                        <div className="text-right">
-                          <p className="text-sm font-medium">
-                            Step {request.workflows[0].current_step}/{request.workflows[0].total_steps}
-                          </p>
-                          <div className="w-24 h-2 bg-gray-200 rounded-full mt-1">
-                            <div
-                              className="h-full bg-blue-600 rounded-full"
-                              style={{
-                                width: `${(request.workflows[0].current_step / request.workflows[0].total_steps) * 100}%`,
-                              }}
-                            />
+                      <div className="flex items-center gap-2">
+                        {request.workflows && request.workflows[0] && (
+                          <div className="text-right mr-2">
+                            <p className="text-sm font-medium">
+                              Step {request.workflows[0].current_step}/{request.workflows[0].total_steps}
+                            </p>
+                            <div className="w-24 h-2 bg-gray-200 rounded-full mt-1">
+                              <div
+                                className="h-full bg-blue-600 rounded-full"
+                                style={{
+                                  width: `${(request.workflows[0].current_step / request.workflows[0].total_steps) * 100}%`,
+                                }}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
+                        {request.status === "completed" && request.workflows?.[0] && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const workflow = workflows.find(w => w.id === request.workflows?.[0]?.id);
+                              if (workflow) {
+                                setSaveAsAutomationWorkflow(workflow);
+                                setAutomationName(request.ai_summary || request.subject || "");
+                              }
+                            }}
+                          >
+                            <Save className="h-4 w-4 mr-1" />
+                            Save as Automation
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -383,9 +519,116 @@ export function WorkspaceClient({
           )}
         </TabsContent>
 
-        {/* Workflows Tab */}
+        {/* Automations Tab */}
+        <TabsContent value="automations" className="space-y-4">
+          {automations.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Zap className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="font-semibold mb-2">No automations yet</h3>
+                <p className="text-muted-foreground mb-4">
+                  Complete a request and save it as an automation to run it again
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {automations.map((automation) => (
+                <Card key={automation.id}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{automation.name}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(automation.automation_status || "inactive")}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleRunAutomation(automation.id)}>
+                              <Play className="h-4 w-4 mr-2" />
+                              Run Now
+                            </DropdownMenuItem>
+                            {automation.automation_status === "active" ? (
+                              <DropdownMenuItem onClick={() => handleToggleAutomation(automation.id, "paused")}>
+                                <Pause className="h-4 w-4 mr-2" />
+                                Pause
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem onClick={() => handleToggleAutomation(automation.id, "active")}>
+                                <Play className="h-4 w-4 mr-2" />
+                                Activate
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                    {automation.clients && (
+                      <CardDescription>
+                        Client: {automation.clients.name}
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          {getScheduleLabel(automation.automation_schedule)}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {automation.run_count} runs
+                        </span>
+                      </div>
+
+                      {automation.last_run_at && (
+                        <p className="text-xs text-muted-foreground">
+                          Last run: {formatDistanceToNow(new Date(automation.last_run_at), { addSuffix: true })}
+                        </p>
+                      )}
+
+                      {automation.webhook_secret && (
+                        <div className="p-2 bg-muted rounded-md">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium flex items-center gap-1">
+                              <Webhook className="h-3 w-3" />
+                              Webhook Trigger
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => copyToClipboard(`/api/workspace/automation/webhook/${automation.id}`)}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleRunAutomation(automation.id)}
+                        >
+                          <Play className="h-4 w-4 mr-1" />
+                          Run Now
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Active Workflows Tab */}
         <TabsContent value="workflows" className="space-y-4">
-          {workflows.length === 0 ? (
+          {activeWorkflows.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Workflow className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -397,7 +640,7 @@ export function WorkspaceClient({
             </Card>
           ) : (
             <div className="space-y-3">
-              {workflows.map((workflow) => (
+              {activeWorkflows.map((workflow) => (
                 <Card key={workflow.id}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
@@ -478,6 +721,51 @@ export function WorkspaceClient({
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Save as Automation Dialog */}
+      <Dialog open={!!saveAsAutomationWorkflow} onOpenChange={() => setSaveAsAutomationWorkflow(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save as Automation</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium">Automation Name</label>
+              <Input
+                value={automationName}
+                onChange={(e) => setAutomationName(e.target.value)}
+                placeholder="e.g., Weekly Marketing Report"
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Trigger</label>
+              <Select value={automationSchedule} onValueChange={setAutomationSchedule}>
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Manual (Run when needed)</SelectItem>
+                  <SelectItem value="webhook">Webhook (Trigger via URL)</SelectItem>
+                  <SelectItem value="0 * * * *">Every hour</SelectItem>
+                  <SelectItem value="0 0 * * *">Daily at midnight</SelectItem>
+                  <SelectItem value="0 9 * * 1-5">Weekdays at 9am</SelectItem>
+                  <SelectItem value="0 0 * * 0">Weekly (Sunday)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveAsAutomationWorkflow(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveAsAutomation} disabled={!automationName.trim()}>
+              <Save className="h-4 w-4 mr-2" />
+              Save Automation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

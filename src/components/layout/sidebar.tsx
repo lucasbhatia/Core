@@ -7,12 +7,12 @@ import {
   Users,
   FolderKanban,
   ClipboardList,
-  Cpu,
   Settings,
   LogOut,
   Menu,
   X,
   Sparkles,
+  Cpu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,6 @@ const navigation = [
   { name: "Clients", href: "/clients", icon: Users },
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Audit Requests", href: "/audits", icon: ClipboardList },
-  { name: "System Builder", href: "/system-builder", icon: Cpu },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 

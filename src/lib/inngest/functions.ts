@@ -819,5 +819,149 @@ export const executeWorkflowFunction = inngest.createFunction(
   }
 );
 
+// ===== UNIFIED WORKSPACE AUTOMATION SCHEDULING =====
+
+// Check scheduled workspace automations
+export const workspaceScheduledAutomation = inngest.createFunction(
+  {
+    id: "workspace-scheduled-check",
+    name: "Check Workspace Scheduled Automations",
+  },
+  { cron: "*/5 * * * *" }, // Every 5 minutes
+  async ({ step }) => {
+    const supabase = getSupabase();
+
+    // Find active scheduled automations that are due
+    const { data: automations } = await step.run("find-due-automations", async () => {
+      const now = new Date().toISOString();
+      return await supabase
+        .from("workflows")
+        .select(`
+          id, name, request_id,
+          automation_schedule, automation_trigger, next_run_at,
+          requests(client_id)
+        `)
+        .eq("is_automation", true)
+        .eq("automation_status", "active")
+        .eq("automation_trigger", "scheduled")
+        .lte("next_run_at", now);
+    });
+
+    if (!automations?.data || automations.data.length === 0) {
+      return { triggered: 0 };
+    }
+
+    let triggered = 0;
+
+    for (const automation of automations.data) {
+      await step.run(`trigger-automation-${automation.id}`, async () => {
+        // Create a new workflow run based on the template
+        const { data: newWorkflow } = await supabase
+          .from("workflows")
+          .insert({
+            request_id: automation.request_id,
+            name: `${automation.name} - Scheduled ${new Date().toISOString()}`,
+            status: "pending",
+            template_workflow_id: automation.id,
+          })
+          .select()
+          .single();
+
+        if (newWorkflow) {
+          // Copy tasks from template
+          const { data: templateTasks } = await supabase
+            .from("agent_tasks")
+            .select("*")
+            .eq("workflow_id", automation.id);
+
+          if (templateTasks && templateTasks.length > 0) {
+            const tasksToCreate = templateTasks.map((task) => ({
+              workflow_id: newWorkflow.id,
+              agent_id: task.agent_id,
+              name: task.name,
+              description: task.description,
+              step_index: task.step_index,
+              instructions: task.instructions,
+              input_type: task.input_type,
+              status: "pending",
+            }));
+
+            await supabase.from("agent_tasks").insert(tasksToCreate);
+          }
+
+          // Update automation stats
+          const nextRun = calculateNextScheduledRun(automation.automation_schedule);
+          await supabase
+            .from("workflows")
+            .update({
+              last_run_at: new Date().toISOString(),
+              next_run_at: nextRun,
+              run_count: supabase.rpc ? undefined : 0, // Would use increment
+            })
+            .eq("id", automation.id);
+
+          // Trigger execution
+          await inngest.send({
+            name: "workflow/execute",
+            data: {
+              workflowId: newWorkflow.id,
+              requestId: automation.request_id,
+              clientId: (automation.requests as { client_id?: string })?.client_id,
+              isAutomationRun: true,
+              templateWorkflowId: automation.id,
+            },
+          });
+
+          triggered++;
+        }
+      });
+    }
+
+    return { triggered };
+  }
+);
+
+// Helper to calculate next scheduled run time
+function calculateNextScheduledRun(schedule: string): string {
+  const now = new Date();
+
+  switch (schedule) {
+    case "0 9 * * *": // Daily at 9am
+      const nextDaily = new Date(now);
+      nextDaily.setDate(nextDaily.getDate() + 1);
+      nextDaily.setHours(9, 0, 0, 0);
+      return nextDaily.toISOString();
+
+    case "0 9 * * 1": // Weekly on Monday at 9am
+      const nextWeekly = new Date(now);
+      nextWeekly.setDate(nextWeekly.getDate() + ((8 - nextWeekly.getDay()) % 7 || 7));
+      nextWeekly.setHours(9, 0, 0, 0);
+      return nextWeekly.toISOString();
+
+    case "0 9 1 * *": // Monthly on 1st at 9am
+      const nextMonthly = new Date(now);
+      nextMonthly.setMonth(nextMonthly.getMonth() + 1);
+      nextMonthly.setDate(1);
+      nextMonthly.setHours(9, 0, 0, 0);
+      return nextMonthly.toISOString();
+
+    case "0 */6 * * *": // Every 6 hours
+      const next6h = new Date(now);
+      next6h.setHours(next6h.getHours() + 6, 0, 0, 0);
+      return next6h.toISOString();
+
+    case "0 * * * *": // Every hour
+      const nextHourly = new Date(now);
+      nextHourly.setHours(nextHourly.getHours() + 1, 0, 0, 0);
+      return nextHourly.toISOString();
+
+    default:
+      // Default to 24 hours from now
+      const defaultNext = new Date(now);
+      defaultNext.setDate(defaultNext.getDate() + 1);
+      return defaultNext.toISOString();
+  }
+}
+
 // Export all functions for the serve handler
-export const functions = [runAutomation, scheduledAutomation, executeWorkflowFunction];
+export const functions = [runAutomation, scheduledAutomation, executeWorkflowFunction, workspaceScheduledAutomation];
