@@ -31,14 +31,21 @@ export async function sendEmail(params: SendEmailParams): Promise<EmailResult> {
   try {
     const resend = getResendClient();
 
-    const { data, error } = await resend.emails.send({
+    // Build email options
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const emailOptions: any = {
       from: params.from || "CoreOS Hub <notifications@coreautomations.com>",
       to: Array.isArray(params.to) ? params.to : [params.to],
       subject: params.subject,
-      html: params.html,
-      text: params.text,
-      reply_to: params.replyTo,
-    });
+      html: params.html || undefined,
+      text: params.text || params.subject, // Fallback to subject if no text
+    };
+
+    if (params.replyTo) {
+      emailOptions.replyTo = params.replyTo;
+    }
+
+    const { data, error } = await resend.emails.send(emailOptions);
 
     if (error) {
       return { success: false, error: error.message };

@@ -1,5 +1,5 @@
 import { inngest } from "./client";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import {
   sendEmail,
   sendAutomationStatusEmail,
@@ -13,8 +13,11 @@ import {
   sendSlackNotification,
 } from "@/lib/integrations";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseInstance = SupabaseClient<any, any, any>;
+
 // Lazy load Supabase client
-function getSupabase() {
+function getSupabase(): SupabaseInstance {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -165,21 +168,22 @@ export const scheduledAutomation = inngest.createFunction(
     const supabase = getSupabase();
 
     // Find active scheduled automations
-    const { data: systems } = await step.run("find-scheduled", async () => {
-      return await supabase
+    const systems = await step.run("find-scheduled", async () => {
+      const { data } = await supabase
         .from("system_builds")
         .select("id, client_id, automation_type, automation_config")
         .eq("automation_status", "active")
         .eq("automation_type", "scheduled");
+      return data || [];
     });
 
-    if (!systems?.data || systems.data.length === 0) {
+    if (!systems || systems.length === 0) {
       return { triggered: 0 };
     }
 
     // Trigger each scheduled automation
     let triggered = 0;
-    for (const system of systems.data) {
+    for (const system of systems) {
       await step.run(`trigger-${system.id}`, async () => {
         const { data: run } = await supabase
           .from("automation_runs")
@@ -226,7 +230,7 @@ interface AutomationResult {
 
 // Email to CRM: Extract contact info from email and add to CRM
 async function executeEmailToCrm(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseInstance,
   runId: string,
   systemId: string,
   config: Record<string, unknown>,
@@ -287,7 +291,7 @@ async function executeEmailToCrm(
 
 // Lead Capture: Process incoming lead and add to CRM
 async function executeLeadCapture(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseInstance,
   runId: string,
   systemId: string,
   config: Record<string, unknown>,
@@ -363,7 +367,7 @@ async function executeLeadCapture(
 
 // AI Processor: Process content with Claude
 async function executeAiProcessor(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseInstance,
   runId: string,
   systemId: string,
   config: Record<string, unknown>,
@@ -413,7 +417,7 @@ async function executeAiProcessor(
 
 // Notification Sender: Send notifications via email/Slack
 async function executeNotificationSender(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseInstance,
   runId: string,
   systemId: string,
   config: Record<string, unknown>,
@@ -466,7 +470,7 @@ async function executeNotificationSender(
 
 // Webhook Relay: Forward data to external webhooks
 async function executeWebhookRelay(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseInstance,
   runId: string,
   systemId: string,
   config: Record<string, unknown>,
@@ -508,7 +512,7 @@ async function executeWebhookRelay(
 
 // Data Sync: Sync data between Airtable tables
 async function executeDataSync(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseInstance,
   runId: string,
   systemId: string,
   config: Record<string, unknown>,
@@ -573,7 +577,7 @@ async function executeDataSync(
 
 // Generic automation handler
 async function executeGenericAutomation(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseInstance,
   runId: string,
   systemId: string,
   config: Record<string, unknown>,
@@ -605,7 +609,7 @@ async function executeGenericAutomation(
 
 // Helper to log steps
 async function logStep(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseInstance,
   runId: string,
   systemId: string,
   level: string,
@@ -755,7 +759,7 @@ export const executeWorkflowFunction = inngest.createFunction(
         };
       });
 
-      if (taskResult.success) {
+      if (taskResult.success && "taskName" in taskResult && "output" in taskResult) {
         outputs[taskResult.taskName] = taskResult.output;
       }
 
@@ -832,9 +836,9 @@ export const workspaceScheduledAutomation = inngest.createFunction(
     const supabase = getSupabase();
 
     // Find active scheduled automations that are due
-    const { data: automations } = await step.run("find-due-automations", async () => {
+    const automations = await step.run("find-due-automations", async () => {
       const now = new Date().toISOString();
-      return await supabase
+      const { data } = await supabase
         .from("workflows")
         .select(`
           id, name, request_id,
@@ -845,15 +849,16 @@ export const workspaceScheduledAutomation = inngest.createFunction(
         .eq("automation_status", "active")
         .eq("automation_trigger", "scheduled")
         .lte("next_run_at", now);
+      return data || [];
     });
 
-    if (!automations?.data || automations.data.length === 0) {
+    if (!automations || automations.length === 0) {
       return { triggered: 0 };
     }
 
     let triggered = 0;
 
-    for (const automation of automations.data) {
+    for (const automation of automations) {
       await step.run(`trigger-automation-${automation.id}`, async () => {
         // Create a new workflow run based on the template
         const { data: newWorkflow } = await supabase
@@ -896,7 +901,6 @@ export const workspaceScheduledAutomation = inngest.createFunction(
             .update({
               last_run_at: new Date().toISOString(),
               next_run_at: nextRun,
-              run_count: supabase.rpc ? undefined : 0, // Would use increment
             })
             .eq("id", automation.id);
 

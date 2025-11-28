@@ -33,7 +33,8 @@ export async function createRecord(
 ): Promise<AirtableResult> {
   try {
     const base = getAirtableBase(baseId);
-    const record = await base(tableName).create(fields);
+    // Airtable expects fields to be passed directly or as {fields: ...}
+    const record = await base(tableName).create(fields as Airtable.FieldSet);
 
     return {
       success: true,
@@ -61,11 +62,12 @@ export async function createRecords(
 ): Promise<AirtableResult> {
   try {
     const base = getAirtableBase(baseId);
-    const createdRecords = await base(tableName).create(records);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const createdRecords = await base(tableName).create(records as any);
 
     return {
       success: true,
-      records: createdRecords.map((r) => ({
+      records: createdRecords.map((r: Airtable.Record<Airtable.FieldSet>) => ({
         id: r.id,
         fields: r.fields as Record<string, unknown>,
         createdTime: r._rawJson.createdTime,
@@ -134,7 +136,7 @@ export async function updateRecord(
 ): Promise<AirtableResult> {
   try {
     const base = getAirtableBase(baseId);
-    const record = await base(tableName).update(recordId, fields);
+    const record = await base(tableName).update(recordId, fields as Airtable.FieldSet);
 
     return {
       success: true,

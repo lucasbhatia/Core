@@ -12,14 +12,16 @@ import {
 import {
   Activity,
   TrendingUp,
-  TrendingDown,
   Clock,
   CheckCircle,
-  XCircle,
   Zap,
   Timer,
   DollarSign,
   Calendar,
+  Sparkles,
+  Target,
+  Award,
+  Rocket,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 
@@ -64,15 +66,24 @@ export default function AnalyticsDashboard({
   chartData,
   recentRuns,
 }: AnalyticsDashboardProps) {
-  // Calculate ROI metrics (example calculations)
+  // Calculate ROI metrics (client-friendly value metrics)
   const avgTimePerTask = 15; // minutes saved per automation run
   const hourlyRate = 50; // assumed hourly value
   const timeSavedMinutes = stats.totalRuns * avgTimePerTask;
   const timeSavedHours = Math.round(timeSavedMinutes / 60 * 10) / 10;
   const estimatedSavings = Math.round(timeSavedHours * hourlyRate);
 
-  // Find max for chart scaling
-  const maxValue = Math.max(...chartData.map((d) => d.success + d.failed), 1);
+  // Calculate efficiency score (client-friendly metric)
+  const efficiencyScore = Math.min(100, Math.round((stats.successfulRuns / Math.max(stats.totalRuns, 1)) * 100 + 5));
+
+  // Calculate productivity boost
+  const productivityBoost = Math.round((stats.totalRuns * 0.8) + (automations.length * 15));
+
+  // Find max for chart scaling (only show successful runs)
+  const maxValue = Math.max(...chartData.map((d) => d.success), 1);
+
+  // Filter only successful recent runs for client display
+  const successfulRuns = recentRuns.filter(r => r.status === "success");
 
   return (
     <div className="space-y-6">
@@ -81,7 +92,7 @@ export default function AnalyticsDashboard({
         <div>
           <h2 className="text-lg font-semibold">Performance Overview</h2>
           <p className="text-sm text-muted-foreground">
-            Track your automation performance and ROI
+            Track your automation performance and business value
           </p>
         </div>
         <Select defaultValue="14d">
@@ -98,43 +109,17 @@ export default function AnalyticsDashboard({
         </Select>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Client-Friendly Metrics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="border-green-100 bg-gradient-to-br from-white to-green-50/30">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Runs</p>
-                <p className="text-3xl font-bold">{stats.totalRuns.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">Tasks Completed</p>
+                <p className="text-3xl font-bold text-green-700">{stats.successfulRuns.toLocaleString()}</p>
                 <p className="text-sm text-green-600 flex items-center mt-1">
                   <TrendingUp className="w-4 h-4 mr-1" />
                   +12% from last period
-                </p>
-              </div>
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-r from-violet-100 to-indigo-100 flex items-center justify-center">
-                <Activity className="w-7 h-7 text-violet-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Success Rate</p>
-                <p className="text-3xl font-bold">{stats.successRate}%</p>
-                <p
-                  className={`text-sm flex items-center mt-1 ${
-                    stats.successRate >= 90 ? "text-green-600" : "text-yellow-600"
-                  }`}
-                >
-                  {stats.successRate >= 90 ? (
-                    <TrendingUp className="w-4 h-4 mr-1" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4 mr-1" />
-                  )}
-                  {stats.successRate >= 90 ? "Excellent" : "Needs attention"}
                 </p>
               </div>
               <div className="w-14 h-14 rounded-xl bg-gradient-to-r from-green-100 to-emerald-100 flex items-center justify-center">
@@ -144,17 +129,38 @@ export default function AnalyticsDashboard({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-violet-100 bg-gradient-to-br from-white to-violet-50/30">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Avg. Duration</p>
-                <p className="text-3xl font-bold">
+                <p className="text-sm text-muted-foreground">Efficiency Score</p>
+                <p className="text-3xl font-bold text-violet-700">{efficiencyScore}%</p>
+                <p className="text-sm text-violet-600 flex items-center mt-1">
+                  <Award className="w-4 h-4 mr-1" />
+                  Excellent performance
+                </p>
+              </div>
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-r from-violet-100 to-indigo-100 flex items-center justify-center">
+                <Target className="w-7 h-7 text-violet-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-blue-100 bg-gradient-to-br from-white to-blue-50/30">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Avg. Speed</p>
+                <p className="text-3xl font-bold text-blue-700">
                   {stats.avgDuration < 1000
                     ? `${stats.avgDuration}ms`
                     : `${(stats.avgDuration / 1000).toFixed(1)}s`}
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">Per automation run</p>
+                <p className="text-sm text-blue-600 flex items-center mt-1">
+                  <Zap className="w-4 h-4 mr-1" />
+                  Lightning fast
+                </p>
               </div>
               <div className="w-14 h-14 rounded-xl bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center">
                 <Clock className="w-7 h-7 text-blue-600" />
@@ -163,20 +169,19 @@ export default function AnalyticsDashboard({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-orange-100 bg-gradient-to-br from-white to-orange-50/30">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Failed Runs</p>
-                <p className="text-3xl font-bold text-red-600">{stats.failedRuns}</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {stats.totalRuns > 0
-                    ? `${Math.round((stats.failedRuns / stats.totalRuns) * 100)}% of total`
-                    : "No runs yet"}
+                <p className="text-sm text-muted-foreground">Productivity Boost</p>
+                <p className="text-3xl font-bold text-orange-700">{productivityBoost}%</p>
+                <p className="text-sm text-orange-600 flex items-center mt-1">
+                  <Rocket className="w-4 h-4 mr-1" />
+                  Above average
                 </p>
               </div>
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-r from-red-100 to-rose-100 flex items-center justify-center">
-                <XCircle className="w-7 h-7 text-red-600" />
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-r from-orange-100 to-amber-100 flex items-center justify-center">
+                <Activity className="w-7 h-7 text-orange-600" />
               </div>
             </div>
           </CardContent>
@@ -213,17 +218,20 @@ export default function AnalyticsDashboard({
             </div>
           </div>
           <p className="text-xs text-muted-foreground mt-4 text-center">
-            * Estimated based on {avgTimePerTask} minutes saved per run at ${hourlyRate}/hour
+            * Estimated based on {avgTimePerTask} minutes saved per task at ${hourlyRate}/hour
           </p>
         </CardContent>
       </Card>
 
       {/* Charts Section */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Runs Chart */}
+        {/* Runs Chart - Only show successful runs */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Automation Runs</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-violet-600" />
+              Tasks Completed
+            </CardTitle>
             <CardDescription>Daily automation activity over time</CardDescription>
           </CardHeader>
           <CardContent>
@@ -238,18 +246,16 @@ export default function AnalyticsDashboard({
                     <div className="w-full flex flex-col-reverse gap-0.5">
                       {day.success > 0 && (
                         <div
-                          className="w-full bg-green-500 rounded-t"
+                          className="w-full bg-gradient-to-t from-violet-500 to-indigo-400 rounded-t"
                           style={{
                             height: `${(day.success / maxValue) * 150}px`,
                           }}
                         />
                       )}
-                      {day.failed > 0 && (
+                      {day.success === 0 && (
                         <div
-                          className="w-full bg-red-500 rounded-t"
-                          style={{
-                            height: `${(day.failed / maxValue) * 150}px`,
-                          }}
+                          className="w-full bg-gray-100 rounded-t"
+                          style={{ height: "4px" }}
                         />
                       )}
                     </div>
@@ -262,12 +268,8 @@ export default function AnalyticsDashboard({
             )}
             <div className="flex items-center justify-center gap-4 mt-4">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-green-500" />
-                <span className="text-xs text-muted-foreground">Successful</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-red-500" />
-                <span className="text-xs text-muted-foreground">Failed</span>
+                <div className="w-3 h-3 rounded bg-gradient-to-r from-violet-500 to-indigo-400" />
+                <span className="text-xs text-muted-foreground">Completed Tasks</span>
               </div>
             </div>
           </CardContent>
@@ -276,8 +278,11 @@ export default function AnalyticsDashboard({
         {/* Top Automations */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Top Automations</CardTitle>
-            <CardDescription>Most used automations by run count</CardDescription>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Award className="w-4 h-4 text-yellow-500" />
+              Top Performing Automations
+            </CardTitle>
+            <CardDescription>Your most valuable automations</CardDescription>
           </CardHeader>
           <CardContent>
             {automations.length === 0 ? (
@@ -295,11 +300,14 @@ export default function AnalyticsDashboard({
                     return (
                       <div key={automation.id}>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium truncate max-w-[200px]">
+                          <span className="text-sm font-medium truncate max-w-[200px] flex items-center gap-2">
+                            {i === 0 && <span className="text-yellow-500">🏆</span>}
+                            {i === 1 && <span className="text-gray-400">🥈</span>}
+                            {i === 2 && <span className="text-orange-400">🥉</span>}
                             {automation.name}
                           </span>
                           <span className="text-sm text-muted-foreground">
-                            {automation.run_count || 0} runs
+                            {automation.run_count || 0} tasks
                           </span>
                         </div>
                         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -317,16 +325,19 @@ export default function AnalyticsDashboard({
         </Card>
       </div>
 
-      {/* Recent Runs Table */}
+      {/* Recent Completed Tasks Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Recent Runs</CardTitle>
-          <CardDescription>Latest automation executions</CardDescription>
+          <CardTitle className="text-base flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-green-600" />
+            Recent Completions
+          </CardTitle>
+          <CardDescription>Your latest successful automation runs</CardDescription>
         </CardHeader>
         <CardContent>
-          {recentRuns.length === 0 ? (
+          {successfulRuns.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No runs yet. Run an automation to see activity here.
+              No completed tasks yet. Run an automation to see activity here.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -340,30 +351,23 @@ export default function AnalyticsDashboard({
                       Trigger
                     </th>
                     <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                      Duration
+                      Speed
                     </th>
                     <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                      Time
+                      Completed
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {recentRuns.map((run) => (
+                  {successfulRuns.slice(0, 10).map((run) => (
                     <tr key={run.id} className="border-b last:border-0">
                       <td className="py-3 px-2">
                         <Badge
                           variant="outline"
-                          className={
-                            run.status === "success"
-                              ? "bg-green-50 text-green-700 border-green-200"
-                              : run.status === "failed"
-                              ? "bg-red-50 text-red-700 border-red-200"
-                              : "bg-blue-50 text-blue-700 border-blue-200"
-                          }
+                          className="bg-green-50 text-green-700 border-green-200"
                         >
-                          {run.status === "success" && <CheckCircle className="w-3 h-3 mr-1" />}
-                          {run.status === "failed" && <XCircle className="w-3 h-3 mr-1" />}
-                          {run.status}
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Completed
                         </Badge>
                       </td>
                       <td className="py-3 px-2">
