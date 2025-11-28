@@ -115,7 +115,7 @@ export function WorkspaceClient({
         body: JSON.stringify({
           content: newRequestContent,
           source: "dashboard",
-          clientId: selectedClient || undefined,
+          clientId: selectedClient && selectedClient !== "none" ? selectedClient : undefined,
         }),
       });
 
@@ -207,7 +207,7 @@ export function WorkspaceClient({
                     <SelectValue placeholder="Select a client" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No client</SelectItem>
+                    <SelectItem value="none">No client</SelectItem>
                     {/* Add clients here */}
                   </SelectContent>
                 </Select>
