@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getTemplateById } from "@/lib/automation-templates";
 
-// Use service role for automation execution
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Create supabase client lazily to avoid build-time errors
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    throw new Error("Missing Supabase environment variables");
+  }
+
+  return createClient(url, key);
+}
 
 // Automation handlers
 const handlers: Record<string, (config: Record<string, unknown>, context: RunContext) => Promise<RunResult>> = {
@@ -153,6 +159,7 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
+    const supabase = getSupabase();
     const { systemId, triggerType = "manual" } = await request.json();
 
     if (!systemId) {

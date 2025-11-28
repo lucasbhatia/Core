@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 
-// Use service role for webhook access (no auth required)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Create supabase client lazily to avoid build-time errors
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    throw new Error("Missing Supabase environment variables");
+  }
+
+  return createClient(url, key);
+}
 
 // Verify webhook signature
 function verifySignature(
@@ -28,6 +34,7 @@ function verifySignature(
 // POST /api/automation/webhook - Start a new run or log to existing
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const body = await request.text();
     const data = JSON.parse(body);
 
@@ -281,6 +288,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Get system webhook info
+  const supabase = getSupabase();
   const { data: system, error } = await supabase
     .from("system_builds")
     .select("id, title, webhook_url, automation_status, run_count, last_run_at")
