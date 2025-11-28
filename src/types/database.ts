@@ -339,3 +339,178 @@ export interface AutomationMetrics {
   created_at: string;
   updated_at: string;
 }
+
+// Billing & Subscription Types
+export type SubscriptionStatus = "active" | "canceled" | "past_due" | "trialing" | "paused";
+export type TeamRole = "admin" | "member" | "viewer";
+export type TeamMemberStatus = "pending" | "active" | "inactive" | "removed";
+export type NotificationType = "automation_success" | "automation_failed" | "usage_warning" | "billing" | "team" | "system";
+export type InvoiceStatus = "draft" | "open" | "pending" | "paid" | "void" | "uncollectible";
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price_monthly: number;
+  price_yearly?: number;
+  automation_limit: number;
+  runs_limit: number;
+  ai_tokens_limit: number;
+  storage_limit_mb: number;
+  team_members_limit: number;
+  features: string[];
+  is_active: boolean;
+  stripe_price_id?: string;
+  stripe_price_id_yearly?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClientSubscription {
+  id: string;
+  client_id: string;
+  plan_id: string;
+  status: SubscriptionStatus;
+  stripe_customer_id?: string;
+  stripe_subscription_id?: string;
+  current_period_start?: string;
+  current_period_end?: string;
+  cancel_at_period_end: boolean;
+  canceled_at?: string;
+  trial_start?: string;
+  trial_end?: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  plan?: SubscriptionPlan;
+  client?: Client;
+}
+
+export interface ClientUsage {
+  id: string;
+  client_id: string;
+  month: string;
+  automation_runs: number;
+  ai_tokens_used: number;
+  storage_used_mb: number;
+  api_calls: number;
+  manual_runs: number;
+  scheduled_runs: number;
+  webhook_runs: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BillingInvoice {
+  id: string;
+  client_id: string;
+  stripe_invoice_id?: string;
+  stripe_payment_intent_id?: string;
+  amount: number;
+  currency: string;
+  status: InvoiceStatus;
+  description?: string;
+  invoice_url?: string;
+  invoice_pdf?: string;
+  period_start?: string;
+  period_end?: string;
+  paid_at?: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PortalChatLog {
+  id: string;
+  client_id: string;
+  user_message: string;
+  ai_response: string;
+  tokens_used: number;
+  context_type: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface TeamMember {
+  id: string;
+  client_id: string;
+  email: string;
+  name?: string;
+  role: TeamRole;
+  status: TeamMemberStatus;
+  invite_token?: string;
+  invite_expires_at?: string;
+  accepted_at?: string;
+  last_active_at?: string;
+  permissions: {
+    can_run_automations: boolean;
+    can_view_analytics: boolean;
+    can_view_billing: boolean;
+    can_manage_team: boolean;
+    can_create_automations: boolean;
+  };
+  invited_by?: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Notification {
+  id: string;
+  client_id: string;
+  user_id?: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  link?: string;
+  is_read: boolean;
+  read_at?: string;
+  email_sent: boolean;
+  email_sent_at?: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface NotificationPreferences {
+  id: string;
+  client_id: string;
+  user_id?: string;
+  email_automation_success: boolean;
+  email_automation_failed: boolean;
+  email_usage_warnings: boolean;
+  email_weekly_reports: boolean;
+  email_billing_alerts: boolean;
+  email_team_updates: boolean;
+  email_marketing: boolean;
+  push_enabled: boolean;
+  push_automation_alerts: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApiKey {
+  id: string;
+  client_id: string;
+  name: string;
+  key_hash: string;
+  key_prefix: string;
+  scopes: string[];
+  last_used_at?: string;
+  expires_at?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WebhookEvent {
+  id: string;
+  source: string;
+  event_type: string;
+  event_id?: string;
+  payload: Record<string, unknown>;
+  signature?: string;
+  is_verified: boolean;
+  processed: boolean;
+  processed_at?: string;
+  error_message?: string;
+  created_at: string;
+}

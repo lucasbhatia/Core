@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import crypto from "crypto";
+import {
+  verifyWebhookSignature,
+  extractWebhookHeaders,
+  sendSignedWebhook,
+  createAutomationWebhookPayload,
+} from "@/lib/webhook";
 
 // Create supabase client lazily to avoid build-time errors
 function getSupabase() {
@@ -14,21 +19,32 @@ function getSupabase() {
   return createClient(url, key);
 }
 
-// Verify webhook signature
-function verifySignature(
-  payload: string,
-  signature: string | null,
-  secret: string
-): boolean {
-  if (!signature) return false;
-  const expected = crypto
-    .createHmac("sha256", secret)
-    .update(payload)
-    .digest("hex");
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expected)
-  );
+// Log webhook event to database
+async function logWebhookEvent(
+  supabase: ReturnType<typeof getSupabase>,
+  event: {
+    source: string;
+    eventType: string;
+    payload: Record<string, unknown>;
+    signature?: string;
+    isVerified: boolean;
+    errorMessage?: string;
+  }
+) {
+  try {
+    await supabase.from("webhook_events").insert({
+      source: event.source,
+      event_type: event.eventType,
+      payload: event.payload,
+      signature: event.signature,
+      is_verified: event.isVerified,
+      processed: true,
+      processed_at: new Date().toISOString(),
+      error_message: event.errorMessage,
+    });
+  } catch (error) {
+    console.error("Failed to log webhook event:", error);
+  }
 }
 
 // POST /api/automation/webhook - Start a new run or log to existing
@@ -80,15 +96,53 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify webhook signature if secret is set
-    const signature = request.headers.get("x-webhook-signature");
+    const { signature, timestamp } = extractWebhookHeaders(request.headers);
     if (system.webhook_secret) {
-      if (!verifySignature(body, signature, system.webhook_secret)) {
+      if (!signature || !timestamp) {
+        await logWebhookEvent(supabase, {
+          source: "automation",
+          eventType: action || "unknown",
+          payload: data,
+          isVerified: false,
+          errorMessage: "Missing signature or timestamp headers",
+        });
         return NextResponse.json(
-          { error: "Invalid webhook signature" },
+          { error: "Missing signature or timestamp headers" },
+          { status: 401 }
+        );
+      }
+
+      const verification = verifyWebhookSignature(
+        body,
+        signature,
+        system.webhook_secret,
+        timestamp
+      );
+
+      if (!verification.valid) {
+        await logWebhookEvent(supabase, {
+          source: "automation",
+          eventType: action || "unknown",
+          payload: data,
+          signature,
+          isVerified: false,
+          errorMessage: verification.error,
+        });
+        return NextResponse.json(
+          { error: verification.error || "Invalid webhook signature" },
           { status: 401 }
         );
       }
     }
+
+    // Log successful webhook verification
+    await logWebhookEvent(supabase, {
+      source: "automation",
+      eventType: action || "unknown",
+      payload: data,
+      signature: signature || undefined,
+      isVerified: true,
+    });
 
     // Handle different actions
     switch (action) {
