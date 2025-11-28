@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Separator } from "@/components/ui/separator";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -69,18 +68,19 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r bg-card transition-transform duration-300 lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex w-72 flex-col transition-transform duration-300 lg:translate-x-0",
+          "sidebar-themed border-r",
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center gap-3 px-6 border-b">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary">
-            <Cpu className="h-5 w-5 text-white" />
+        <div className="flex h-16 items-center gap-3 px-6 border-b border-[hsl(var(--sidebar-border))]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(var(--sidebar-accent))]">
+            <Cpu className="h-5 w-5 text-[hsl(var(--sidebar-bg))]" />
           </div>
           <div>
             <h1 className="text-lg font-bold">CoreOS Hub</h1>
-            <p className="text-xs text-muted-foreground">Core Automations</p>
+            <p className="text-xs opacity-70">Core Automations</p>
           </div>
         </div>
 
@@ -96,8 +96,8 @@ export function Sidebar() {
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
                   isActive
-                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    ? "bg-[hsl(var(--sidebar-accent))] text-[hsl(var(--sidebar-bg))] shadow-lg"
+                    : "opacity-80 hover:opacity-100 hover:bg-[hsl(var(--sidebar-accent)/0.1)]"
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -107,13 +107,13 @@ export function Sidebar() {
           })}
         </nav>
 
-        <Separator />
+        <div className="border-t border-[hsl(var(--sidebar-border))]" />
 
         {/* User section */}
         <div className="p-4">
           <Button
             variant="ghost"
-            className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+            className="w-full justify-start gap-3 opacity-80 hover:opacity-100 hover:bg-[hsl(var(--sidebar-accent)/0.1)]"
             onClick={handleSignOut}
           >
             <LogOut className="h-5 w-5" />
