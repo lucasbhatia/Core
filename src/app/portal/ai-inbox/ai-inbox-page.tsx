@@ -78,6 +78,7 @@ import {
 import { formatDistanceToNow, format, isToday, isYesterday } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import { UniversalAIActionsBar, EntityContext } from "@/components/universal-ai-actions";
 
 interface AIInboxPageProps {
   clientId: string;
@@ -829,6 +830,24 @@ export default function AIInboxPage({ clientId, clientName }: AIInboxPageProps) 
                     )}
                   >
                     {renderMessageContent(message)}
+                    {/* Universal AI Actions Bar for assistant messages */}
+                    {message.role === "assistant" && message.id !== "greeting" && (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <UniversalAIActionsBar
+                          entity={{
+                            type: "chat_message",
+                            id: message.id,
+                            title: message.content.slice(0, 50) + (message.content.length > 50 ? "..." : ""),
+                            description: message.type === "automation_proposal" ? "AI Automation Proposal" :
+                                        message.type === "workflow_sequence" ? "AI Workflow Sequence" :
+                                        message.type === "project_plan" ? "AI Project Plan" : "AI Response",
+                            content: message.content,
+                            metadata: message.metadata,
+                          }}
+                          variant="compact"
+                        />
+                      </div>
+                    )}
                     <div className={cn(
                       "flex items-center justify-between mt-3 pt-2",
                       message.role === "user" ? "border-t border-white/20" : "border-t border-gray-100"
@@ -839,17 +858,21 @@ export default function AIInboxPage({ clientId, clientName }: AIInboxPageProps) 
                       )}>
                         {formatDistanceToNow(message.timestamp, { addSuffix: true })}
                       </span>
-                      {message.role === "assistant" && message.type === "text" && (
-                        <button
-                          onClick={() => copyToClipboard(message.content, message.id)}
-                          className="text-muted-foreground hover:text-gray-900 transition-colors flex items-center gap-1 text-xs"
-                        >
-                          {copiedId === message.id ? (
-                            <><Check className="w-3.5 h-3.5" /> Copied</>
-                          ) : (
-                            <><Copy className="w-3.5 h-3.5" /> Copy</>
+                      {message.role === "assistant" && (
+                        <div className="flex items-center gap-2">
+                          {message.type === "text" && (
+                            <button
+                              onClick={() => copyToClipboard(message.content, message.id)}
+                              className="text-muted-foreground hover:text-gray-900 transition-colors flex items-center gap-1 text-xs"
+                            >
+                              {copiedId === message.id ? (
+                                <><Check className="w-3.5 h-3.5" /> Copied</>
+                              ) : (
+                                <><Copy className="w-3.5 h-3.5" /> Copy</>
+                              )}
+                            </button>
                           )}
-                        </button>
+                        </div>
                       )}
                     </div>
                   </div>

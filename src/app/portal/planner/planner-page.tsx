@@ -42,8 +42,12 @@ import {
   Link as LinkIcon,
   Check,
   User,
+  Sparkles,
+  Bot,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { UniversalAIActionsBar, EntityContext } from "@/components/universal-ai-actions";
 
 // Types
 interface TeamMember {
@@ -698,60 +702,84 @@ function TaskItem({
     ? PROJECT_COLORS.find(c => c.value === project.color)
     : null;
 
+  // Create entity context for AI actions
+  const taskEntity: EntityContext = {
+    type: "task",
+    id: task.id,
+    title: task.title,
+    description: task.title,
+    project_id: task.project_id,
+    project_name: project?.name,
+    assignee_id: task.assignee_id,
+    assignee_name: assignee?.name,
+    due_date: task.due_date,
+    status: task.completed ? "completed" : "pending",
+  };
+
   return (
     <div className={cn(
-      "group flex items-start gap-2 px-2 py-2 rounded-md hover:bg-gray-50",
+      "group flex flex-col gap-1 px-2 py-2 rounded-md hover:bg-gray-50",
       task.completed && "opacity-60"
     )}>
-      <Checkbox
-        checked={task.completed}
-        onCheckedChange={onToggle}
-        className="mt-0.5"
-      />
-      <div className="flex-1 min-w-0">
-        <p className={cn(
-          "text-sm leading-tight",
-          task.completed && "line-through text-muted-foreground"
-        )}>
-          {task.title}
-        </p>
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
-          {project && color && (
-            <span className={cn("text-xs px-1.5 py-0.5 rounded", color.light, color.text)}>
-              {project.name}
-            </span>
-          )}
-          {task.due_date && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <CalendarIcon className="h-3 w-3" />
-              {new Date(task.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-            </span>
-          )}
-          {assignee && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <User className="h-3 w-3" />
-              {assignee.name}
-            </span>
-          )}
+      <div className="flex items-start gap-2">
+        <Checkbox
+          checked={task.completed}
+          onCheckedChange={onToggle}
+          className="mt-0.5"
+        />
+        <div className="flex-1 min-w-0">
+          <p className={cn(
+            "text-sm leading-tight",
+            task.completed && "line-through text-muted-foreground"
+          )}>
+            {task.title}
+          </p>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            {project && color && (
+              <span className={cn("text-xs px-1.5 py-0.5 rounded", color.light, color.text)}>
+                {project.name}
+              </span>
+            )}
+            {task.due_date && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <CalendarIcon className="h-3 w-3" />
+                {new Date(task.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              </span>
+            )}
+            {assignee && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <User className="h-3 w-3" />
+                {assignee.name}
+              </span>
+            )}
+          </div>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <MoreHorizontal className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onDelete} className="text-red-600">
+              <Trash2 className="h-3 w-3 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <MoreHorizontal className="h-3 w-3" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onDelete} className="text-red-600">
-            <Trash2 className="h-3 w-3 mr-2" />
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {/* Universal AI Actions Bar */}
+      <div className="ml-6 opacity-0 group-hover:opacity-100 transition-opacity">
+        <UniversalAIActionsBar
+          entity={taskEntity}
+          variant="compact"
+          showLabels={false}
+        />
+      </div>
     </div>
   );
 }

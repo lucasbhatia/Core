@@ -51,6 +51,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
+import { UniversalAIActionsBar } from "@/components/universal-ai-actions";
 
 interface Automation {
   id: string;
@@ -448,6 +449,25 @@ export default function AutomationsPage({ automations, clientId }: AutomationsPa
                   </span>
                 </div>
 
+                {/* Universal AI Actions Bar */}
+                <div className="mb-4">
+                  <UniversalAIActionsBar
+                    entity={{
+                      type: "automation",
+                      id: automation.id,
+                      title: automation.name,
+                      description: automation.description || automation.result?.systemOverview || "Automated workflow",
+                      status: automation.automation_status,
+                      metadata: {
+                        trigger: automation.automation_trigger,
+                        runCount: automation.run_count,
+                        errorCount: automation.error_count,
+                      },
+                    }}
+                    variant="compact"
+                  />
+                </div>
+
                 {/* Action Button */}
                 {automation.automation_status === "active" ? (
                   <Button
@@ -582,6 +602,24 @@ export default function AutomationsPage({ automations, clientId }: AutomationsPa
                     </p>
                   </div>
                 )}
+              </div>
+              {/* Universal AI Actions Bar in Dialog */}
+              <div className="py-2 border-t">
+                <p className="text-sm font-medium mb-2">AI Actions</p>
+                <UniversalAIActionsBar
+                  entity={{
+                    type: "automation",
+                    id: selectedAutomation.id,
+                    title: selectedAutomation.name,
+                    description: selectedAutomation.description || selectedAutomation.result?.systemOverview || "Automated workflow",
+                    status: selectedAutomation.automation_status,
+                    metadata: {
+                      trigger: selectedAutomation.automation_trigger,
+                      runCount: selectedAutomation.run_count,
+                      errorCount: selectedAutomation.error_count,
+                    },
+                  }}
+                />
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setSelectedAutomation(null)}>
