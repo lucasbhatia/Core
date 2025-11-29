@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
+import { UniversalAIActionsBar, EntityContext } from "@/components/universal-ai-actions";
 
 interface Deliverable {
   id: string;
@@ -222,8 +223,21 @@ export default function DeliverablesPage({ deliverables }: DeliverablesPageProps
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {items.map((deliverable) => {
                     const CategoryIcon = categoryIcons[deliverable.category || "general"] || FileText;
+                    // Create entity context for AI actions
+                    const deliverableEntity: EntityContext = {
+                      type: "deliverable",
+                      id: deliverable.id,
+                      title: deliverable.name,
+                      description: deliverable.description,
+                      content: deliverable.content,
+                      status: deliverable.status,
+                      metadata: {
+                        category: deliverable.category,
+                        file_type: deliverable.file_type,
+                      },
+                    };
                     return (
-                      <Card key={deliverable.id} className="hover:shadow-md transition-shadow">
+                      <Card key={deliverable.id} className="hover:shadow-md transition-shadow group">
                         <CardHeader className="pb-2">
                           <div className="flex items-start justify-between">
                             <div className="flex items-start gap-3">
@@ -289,6 +303,13 @@ export default function DeliverablesPage({ deliverables }: DeliverablesPageProps
                               {deliverable.status}
                             </Badge>
                           </div>
+                          {/* Universal AI Actions Bar */}
+                          <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <UniversalAIActionsBar
+                              entity={deliverableEntity}
+                              variant="compact"
+                            />
+                          </div>
                           <Button
                             variant="outline"
                             size="sm"
@@ -318,11 +339,25 @@ export default function DeliverablesPage({ deliverables }: DeliverablesPageProps
                 <DialogTitle>{selectedDeliverable.name}</DialogTitle>
                 <DialogDescription>{selectedDeliverable.description}</DialogDescription>
               </DialogHeader>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="outline" className="capitalize">
-                  {selectedDeliverable.category || "general"}
-                </Badge>
-                <Badge variant="secondary">{selectedDeliverable.status}</Badge>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="capitalize">
+                    {selectedDeliverable.category || "general"}
+                  </Badge>
+                  <Badge variant="secondary">{selectedDeliverable.status}</Badge>
+                </div>
+                {/* Universal AI Actions Bar in Dialog */}
+                <UniversalAIActionsBar
+                  entity={{
+                    type: "deliverable",
+                    id: selectedDeliverable.id,
+                    title: selectedDeliverable.name,
+                    description: selectedDeliverable.description,
+                    content: selectedDeliverable.content,
+                    status: selectedDeliverable.status,
+                  }}
+                  variant="compact"
+                />
               </div>
               <div className="h-[400px] w-full rounded-md border p-4 overflow-auto bg-gray-50">
                 <div className="prose prose-sm max-w-none whitespace-pre-wrap">
