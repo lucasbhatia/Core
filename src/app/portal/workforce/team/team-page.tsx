@@ -2,16 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -37,8 +37,13 @@ import {
   Zap,
   CheckCircle,
   AlertCircle,
+  TrendingUp,
+  FileText,
+  Brain,
+  Target,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { formatDistanceToNow } from "date-fns";
 import {
   AGENT_ROSTER,
   DEPARTMENT_INFO,
@@ -113,6 +118,7 @@ export default function TeamPage({ clientId, clientPlan, companyName }: TeamPage
   const totalTasks = hiredAgents.reduce((sum, a) => sum + a.tasks_completed, 0);
   const totalDeliverables = hiredAgents.reduce((sum, a) => sum + a.deliverables_created, 0);
   const activeCount = hiredAgents.filter((a) => a.status === "active").length;
+  const avgRating = hiredAgents.filter(a => a.avg_task_rating).reduce((sum, a) => sum + (a.avg_task_rating || 0), 0) / hiredAgents.filter(a => a.avg_task_rating).length || 0;
 
   // Group agents by department
   const agentsByDepartment = hiredAgents.reduce((acc, agent) => {
@@ -132,7 +138,7 @@ export default function TeamPage({ clientId, clientPlan, companyName }: TeamPage
     );
     const agent = hiredAgents.find((a) => a.id === agentId);
     toast({
-      title: `${agent?.roster_agent.name} ${agent?.status === "active" ? "paused" : "activated"}`,
+      title: agent?.status === "active" ? "Agent paused" : "Agent activated",
     });
   }
 
@@ -167,6 +173,9 @@ export default function TeamPage({ clientId, clientPlan, companyName }: TeamPage
     setShowSettingsDialog(true);
   }
 
+  // Find top performer
+  const topPerformer = [...hiredAgents].sort((a, b) => (b.avg_task_rating || 0) - (a.avg_task_rating || 0))[0];
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Header */}
@@ -192,145 +201,213 @@ export default function TeamPage({ clientId, clientPlan, companyName }: TeamPage
         </Button>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      {/* Stats Overview */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
                 <Users className="w-5 h-5 text-violet-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{hiredAgents.length}</p>
-                <p className="text-sm text-muted-foreground">Team Members</p>
+                <p className="text-xs text-muted-foreground">Team Size</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
                 <CheckCircle className="w-5 h-5 text-green-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{totalTasks}</p>
-                <p className="text-sm text-muted-foreground">Tasks Completed</p>
+                <p className="text-xs text-muted-foreground">Total Tasks</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
-                <Star className="w-5 h-5 text-yellow-600" />
+              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-blue-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{totalDeliverables}</p>
-                <p className="text-sm text-muted-foreground">Deliverables</p>
+                <p className="text-xs text-muted-foreground">Deliverables</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                <Star className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1">
+                  <p className="text-2xl font-bold">{avgRating.toFixed(1)}</p>
+                  <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                </div>
+                <p className="text-xs text-muted-foreground">Avg Rating</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Team List */}
+      {/* Top Performer */}
+      {topPerformer && topPerformer.avg_task_rating && (
+        <Card className="bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-100 to-yellow-100 flex items-center justify-center text-2xl">
+                  {topPerformer.roster_agent.personality.avatar}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{topPerformer.roster_agent.name}</p>
+                    <Badge className="bg-amber-100 text-amber-700 border-0 text-xs">
+                      <Star className="w-3 h-3 mr-1 fill-current" />
+                      Top Performer
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{topPerformer.tasks_completed} tasks • {topPerformer.avg_task_rating.toFixed(1)} rating</p>
+                </div>
+              </div>
+              <Button size="sm" variant="outline" asChild>
+                <Link href={`/portal/workforce/agent/${topPerformer.id}`}>
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Open
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Team List by Department */}
       {Object.entries(agentsByDepartment).map(([dept, agents]) => (
         <div key={dept} className="space-y-3">
           <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
             <span>{DEPARTMENT_INFO[dept as AgentDepartment].icon}</span>
             {DEPARTMENT_INFO[dept as AgentDepartment].label}
+            <Badge variant="secondary" className="text-xs">{agents.length}</Badge>
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-3">
             {agents.map((agent) => (
               <Card
                 key={agent.id}
-                className={`group transition-all ${
-                  agent.status === "paused" ? "opacity-60" : "hover:shadow-sm"
+                className={`transition-all ${
+                  agent.status === "paused" ? "opacity-60" : "hover:shadow-sm hover:border-violet-200"
                 }`}
               >
                 <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-100 to-indigo-100 flex items-center justify-center text-2xl">
+                  <div className="flex items-center gap-4">
+                    {/* Avatar */}
+                    <div className="relative shrink-0">
+                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-100 to-indigo-100 flex items-center justify-center text-2xl">
                         {agent.roster_agent.personality.avatar}
                       </div>
                       {agent.status === "active" && (
-                        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full" />
+                        <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
                       )}
                     </div>
+
+                    {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium truncate">
-                        {agent.custom_name || agent.roster_agent.name}
-                      </h3>
-                      <p className="text-sm text-muted-foreground truncate">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-medium">
+                          {agent.custom_name || agent.roster_agent.name}
+                        </h3>
+                        <Badge
+                          variant={agent.status === "active" ? "default" : "secondary"}
+                          className="text-xs capitalize"
+                        >
+                          {agent.status}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
                         {agent.roster_agent.role}
                       </p>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+                          {agent.tasks_completed} tasks
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <FileText className="w-3.5 h-3.5 text-blue-600" />
+                          {agent.deliverables_created} deliverables
+                        </span>
+                        {agent.avg_task_rating && (
+                          <span className="flex items-center gap-1">
+                            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                            {agent.avg_task_rating.toFixed(1)}
+                          </span>
+                        )}
+                        <span>
+                          Last active {formatDistanceToNow(new Date(agent.last_active_at || agent.hired_at), { addSuffix: true })}
+                        </span>
+                      </div>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link href={`/portal/workforce/agent/${agent.id}`}>
-                            <MessageSquare className="h-4 w-4 mr-2" />
-                            Chat
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleToggleStatus(agent.id)}>
-                          {agent.status === "active" ? (
-                            <>
-                              <Pause className="h-4 w-4 mr-2" />
-                              Pause
-                            </>
-                          ) : (
-                            <>
-                              <Play className="h-4 w-4 mr-2" />
-                              Activate
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openSettingsDialog(agent)}>
-                          <Settings className="h-4 w-4 mr-2" />
-                          Settings
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedAgent(agent);
-                            setShowRemoveDialog(true);
-                          }}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Remove
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
 
-                  {/* Stats */}
-                  <div className="flex items-center gap-4 mt-3 pt-3 border-t text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <CheckCircle className="w-3.5 h-3.5" />
-                      {agent.tasks_completed} tasks
-                    </span>
-                    {agent.avg_task_rating && (
-                      <span className="flex items-center gap-1">
-                        <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
-                        {agent.avg_task_rating.toFixed(1)}
-                      </span>
-                    )}
-                    <Badge
-                      variant={agent.status === "active" ? "default" : "secondary"}
-                      className="ml-auto text-xs"
-                    >
-                      {agent.status}
-                    </Badge>
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button size="sm" variant="outline" asChild>
+                        <Link href={`/portal/workforce/agent/${agent.id}`}>
+                          <MessageSquare className="w-4 h-4 mr-2" />
+                          Open
+                        </Link>
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/portal/workforce/agent/${agent.id}/automations`}>
+                              <Zap className="h-4 w-4 mr-2" />
+                              Automations
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleToggleStatus(agent.id)}>
+                            {agent.status === "active" ? (
+                              <>
+                                <Pause className="h-4 w-4 mr-2" />
+                                Pause
+                              </>
+                            ) : (
+                              <>
+                                <Play className="h-4 w-4 mr-2" />
+                                Activate
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openSettingsDialog(agent)}>
+                            <Settings className="h-4 w-4 mr-2" />
+                            Settings
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedAgent(agent);
+                              setShowRemoveDialog(true);
+                            }}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Remove
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -366,11 +443,8 @@ export default function TeamPage({ clientId, clientPlan, companyName }: TeamPage
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-3">
                   <span className="text-2xl">{selectedAgent.roster_agent.personality.avatar}</span>
-                  Settings
+                  Agent Settings
                 </DialogTitle>
-                <DialogDescription>
-                  Customize {selectedAgent.roster_agent.name}
-                </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4 py-4">
@@ -381,6 +455,9 @@ export default function TeamPage({ clientId, clientPlan, companyName }: TeamPage
                     onChange={(e) => setCustomName(e.target.value)}
                     placeholder={selectedAgent.roster_agent.name}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Give this agent a nickname
+                  </p>
                 </div>
 
                 <div>
@@ -392,16 +469,24 @@ export default function TeamPage({ clientId, clientPlan, companyName }: TeamPage
                     rows={3}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    These will be added to every task.
+                    These will be included in every task
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div>
                     <p className="text-sm font-medium">Notifications</p>
                     <p className="text-xs text-muted-foreground">Get notified when tasks complete</p>
                   </div>
                   <Switch defaultChecked={selectedAgent.notification_enabled} />
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium">Auto-save Deliverables</p>
+                    <p className="text-xs text-muted-foreground">Save all outputs automatically</p>
+                  </div>
+                  <Switch defaultChecked={selectedAgent.auto_save_deliverables} />
                 </div>
               </div>
 
@@ -428,10 +513,10 @@ export default function TeamPage({ clientId, clientPlan, companyName }: TeamPage
                   <AlertCircle className="w-5 h-5" />
                   Remove Agent?
                 </DialogTitle>
-                <DialogDescription>
-                  Remove {selectedAgent.roster_agent.name} from your team? You can hire them again later.
-                </DialogDescription>
               </DialogHeader>
+              <p className="text-sm text-muted-foreground">
+                Remove <strong>{selectedAgent.roster_agent.name}</strong> from your team? This agent has completed {selectedAgent.tasks_completed} tasks. You can hire them again later.
+              </p>
 
               <DialogFooter className="gap-2">
                 <Button variant="outline" onClick={() => setShowRemoveDialog(false)}>
