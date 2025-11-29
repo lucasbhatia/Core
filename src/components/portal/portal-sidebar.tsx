@@ -19,23 +19,16 @@ import {
   BarChart3,
   Settings,
   CreditCard,
-  PlusCircle,
   ChevronLeft,
   ChevronRight,
   Zap,
-  Bell,
   HelpCircle,
   Users,
   Sparkles,
   UserPlus,
-  CheckSquare,
   Calendar,
-  FolderKanban,
   MessageSquare,
   Plug,
-  Inbox,
-  Workflow,
-  History,
 } from "lucide-react";
 
 interface SidebarItem {
@@ -56,15 +49,8 @@ const sidebarGroups: SidebarGroup[] = [
     title: "Overview",
     items: [
       { label: "Dashboard", href: "/portal", icon: LayoutDashboard },
-      { label: "Ask AI", href: "/portal/ai-inbox", icon: MessageSquare, badge: "New" },
-    ],
-  },
-  {
-    title: "Productivity",
-    items: [
-      { label: "Tasks", href: "/portal/tasks", icon: CheckSquare },
-      { label: "Calendar", href: "/portal/calendar", icon: Calendar },
-      { label: "Projects", href: "/portal/projects", icon: FolderKanban },
+      { label: "Planner", href: "/portal/planner", icon: Calendar },
+      { label: "Ask AI", href: "/portal/ai-inbox", icon: MessageSquare },
     ],
   },
   {
@@ -72,8 +58,6 @@ const sidebarGroups: SidebarGroup[] = [
     items: [
       { label: "AI Workforce", href: "/portal/workforce", icon: UserPlus },
       { label: "Automations", href: "/portal/automations", icon: Bot },
-      { label: "Visual Editor", href: "/portal/editor", icon: Workflow, badge: "New" },
-      { label: "Create New", href: "/portal/builder", icon: PlusCircle },
       { label: "Templates", href: "/portal/templates", icon: Sparkles },
     ],
   },
@@ -82,15 +66,14 @@ const sidebarGroups: SidebarGroup[] = [
     items: [
       { label: "Deliverables", href: "/portal/deliverables", icon: FolderOpen },
       { label: "Analytics", href: "/portal/analytics", icon: BarChart3 },
-      { label: "Activity", href: "/portal/activity", icon: History },
     ],
   },
   {
     title: "Account",
     items: [
       { label: "Integrations", href: "/portal/integrations", icon: Plug },
-      { label: "Billing", href: "/portal/billing", icon: CreditCard },
       { label: "Team", href: "/portal/team", icon: Users },
+      { label: "Billing", href: "/portal/billing", icon: CreditCard },
       { label: "Settings", href: "/portal/settings", icon: Settings },
     ],
   },
