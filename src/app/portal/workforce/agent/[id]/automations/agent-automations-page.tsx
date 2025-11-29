@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -28,24 +27,14 @@ import {
   Zap,
   Plus,
   ArrowRight,
-  Play,
-  Pause,
   Trash2,
-  Settings,
   Users,
   Mail,
-  Calendar,
-  Bell,
   FileText,
-  MessageSquare,
-  Globe,
-  Clock,
-  CheckCircle,
   ChevronRight,
-  Webhook,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { AGENT_ROSTER, DEPARTMENT_INFO } from "@/lib/ai-workforce";
+import { AGENT_ROSTER } from "@/lib/ai-workforce";
 
 interface AgentAutomationsPageProps {
   agentId: string;
@@ -56,12 +45,10 @@ interface AgentAutomation {
   id: string;
   name: string;
   trigger: string;
-  triggerConfig: Record<string, unknown>;
   action: string;
-  actionConfig: Record<string, unknown>;
+  targetAgentId?: string;
+  email?: string;
   is_active: boolean;
-  times_triggered: number;
-  last_triggered_at: string | null;
 }
 
 // Mock current agent
@@ -72,95 +59,20 @@ const mockAgent = {
   avatar: "👩‍💻",
 };
 
-// Available trigger types
-const triggerTypes = [
-  {
-    id: "deliverable_created",
-    name: "When deliverable is created",
-    description: "Triggered every time this agent creates a new deliverable",
-    icon: FileText,
-  },
-  {
-    id: "task_completed",
-    name: "When task is completed",
-    description: "Triggered when a task is marked as complete",
-    icon: CheckCircle,
-  },
-  {
-    id: "scheduled",
-    name: "On a schedule",
-    description: "Run automatically at set times",
-    icon: Calendar,
-  },
-];
-
-// Available action types
-const actionTypes = [
-  {
-    id: "send_to_agent",
-    name: "Send to another agent",
-    description: "Pass the output to another AI agent for further processing",
-    icon: Users,
-    color: "violet",
-  },
-  {
-    id: "send_email",
-    name: "Send email notification",
-    description: "Email the deliverable or notification to recipients",
-    icon: Mail,
-    color: "blue",
-  },
-  {
-    id: "webhook",
-    name: "Call webhook",
-    description: "Send data to an external service via webhook",
-    icon: Webhook,
-    color: "green",
-  },
-  {
-    id: "schedule_post",
-    name: "Schedule social post",
-    description: "Queue content for social media posting",
-    icon: Globe,
-    color: "pink",
-  },
-  {
-    id: "notify",
-    name: "Send notification",
-    description: "Send an in-app notification",
-    icon: Bell,
-    color: "orange",
-  },
-];
-
-// Agents that can receive content
+// Available agents to send to
 const receiverAgents = AGENT_ROSTER.filter(
   (a) => a.id !== "content-writer-sarah"
-).slice(0, 8);
+).slice(0, 6);
 
 // Mock existing automations
 const mockAutomations: AgentAutomation[] = [
   {
     id: "auto-1",
     name: "Blog to Social Posts",
-    trigger: "deliverable_created",
-    triggerConfig: { deliverable_type: "blog_post" },
+    trigger: "deliverable",
     action: "send_to_agent",
-    actionConfig: { target_agent_id: "social-media-alex" },
+    targetAgentId: "social-media-alex",
     is_active: true,
-    times_triggered: 12,
-    last_triggered_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "auto-2",
-    name: "Weekly Newsletter Email",
-    trigger: "scheduled",
-    triggerConfig: { schedule: "0 9 * * 1" },
-    action: "send_email",
-    actionConfig: { recipients: ["team@example.com"] },
-    is_active: false,
-    times_triggered: 8,
-    last_triggered_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
   },
 ];
 
@@ -168,546 +80,323 @@ export default function AgentAutomationsPage({ agentId, clientId }: AgentAutomat
   const { toast } = useToast();
   const [automations, setAutomations] = useState(mockAutomations);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [createStep, setCreateStep] = useState(1);
 
   // New automation state
-  const [newAutomation, setNewAutomation] = useState({
-    name: "",
-    trigger: "",
-    triggerConfig: {} as Record<string, string>,
-    action: "",
-    actionConfig: {} as Record<string, string>,
-  });
+  const [name, setName] = useState("");
+  const [trigger, setTrigger] = useState("deliverable");
+  const [action, setAction] = useState("send_to_agent");
+  const [targetAgentId, setTargetAgentId] = useState("");
+  const [email, setEmail] = useState("");
 
-  const handleCreateAutomation = () => {
-    if (!newAutomation.name || !newAutomation.trigger || !newAutomation.action) {
-      toast({
-        title: "Missing fields",
-        description: "Please complete all steps",
-        variant: "destructive",
-      });
+  const resetForm = () => {
+    setName("");
+    setTrigger("deliverable");
+    setAction("send_to_agent");
+    setTargetAgentId("");
+    setEmail("");
+  };
+
+  const handleCreate = () => {
+    if (!name) {
+      toast({ title: "Please add a name", variant: "destructive" });
       return;
     }
 
     const automation: AgentAutomation = {
       id: `auto-${Date.now()}`,
-      name: newAutomation.name,
-      trigger: newAutomation.trigger,
-      triggerConfig: newAutomation.triggerConfig,
-      action: newAutomation.action,
-      actionConfig: newAutomation.actionConfig,
+      name,
+      trigger,
+      action,
+      targetAgentId: action === "send_to_agent" ? targetAgentId : undefined,
+      email: action === "send_email" ? email : undefined,
       is_active: true,
-      times_triggered: 0,
-      last_triggered_at: null,
     };
 
     setAutomations([...automations, automation]);
     setShowCreateDialog(false);
-    setCreateStep(1);
-    setNewAutomation({
-      name: "",
-      trigger: "",
-      triggerConfig: {},
-      action: "",
-      actionConfig: {},
-    });
-
-    toast({
-      title: "Automation created!",
-      description: "Your automation is now active.",
-    });
+    resetForm();
+    toast({ title: "Automation created" });
   };
 
-  const handleToggleAutomation = (id: string) => {
+  const handleToggle = (id: string) => {
     setAutomations(
-      automations.map((a) =>
-        a.id === id ? { ...a, is_active: !a.is_active } : a
-      )
+      automations.map((a) => (a.id === id ? { ...a, is_active: !a.is_active } : a))
     );
   };
 
-  const handleDeleteAutomation = (id: string) => {
+  const handleDelete = (id: string) => {
     setAutomations(automations.filter((a) => a.id !== id));
     toast({ title: "Automation deleted" });
   };
 
-  const getActionIcon = (actionId: string) => {
-    const action = actionTypes.find((a) => a.id === actionId);
-    return action?.icon || Zap;
+  const getTargetAgentName = (agentId?: string) => {
+    const agent = AGENT_ROSTER.find((a) => a.id === agentId);
+    return agent?.name || "Unknown";
   };
 
-  const getTriggerIcon = (triggerId: string) => {
-    const trigger = triggerTypes.find((t) => t.id === triggerId);
-    return trigger?.icon || Zap;
+  const getTargetAgentAvatar = (agentId?: string) => {
+    const agent = AGENT_ROSTER.find((a) => a.id === agentId);
+    return agent?.personality.avatar || "🤖";
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" asChild>
             <Link href={`/portal/workforce/agent/${agentId}`}>
               <ArrowLeft className="w-5 h-5" />
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Zap className="w-6 h-6 text-violet-600" />
-              Agent Automations
-            </h1>
+            <h1 className="text-2xl font-bold">Automations</h1>
             <p className="text-muted-foreground">
-              Create workflows that trigger when {mockAgent.name} completes work
+              Connect {mockAgent.name}'s work to other actions
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => setShowCreateDialog(true)}
-          className="bg-gradient-to-r from-violet-600 to-indigo-600"
-        >
+        <Button onClick={() => setShowCreateDialog(true)} className="bg-violet-600 hover:bg-violet-700">
           <Plus className="w-4 h-4 mr-2" />
-          New Automation
+          New
         </Button>
       </div>
 
       {/* How it works */}
       <Card className="bg-gradient-to-r from-violet-50 to-indigo-50 border-violet-100">
-        <CardContent className="py-6">
-          <h3 className="font-semibold mb-4">How Agent Automations Work</h3>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-xl shadow-sm">
-                {mockAgent.avatar}
-              </div>
-              <div>
-                <p className="font-medium text-sm">{mockAgent.name}</p>
-                <p className="text-xs text-muted-foreground">Creates content</p>
-              </div>
+        <CardContent className="py-4">
+          <div className="flex items-center gap-3 text-sm">
+            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-xl shadow-sm">
+              {mockAgent.avatar}
             </div>
-            <ArrowRight className="w-5 h-5 text-violet-400" />
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm">
-                <Zap className="w-5 h-5 text-violet-600" />
-              </div>
-              <div>
-                <p className="font-medium text-sm">Automation</p>
-                <p className="text-xs text-muted-foreground">Triggers action</p>
-              </div>
+            <span className="text-muted-foreground">creates content</span>
+            <ArrowRight className="w-4 h-4 text-violet-400" />
+            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm">
+              <Zap className="w-5 h-5 text-violet-600" />
             </div>
-            <ArrowRight className="w-5 h-5 text-violet-400" />
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm">
-                <Users className="w-5 h-5 text-indigo-600" />
-              </div>
-              <div>
-                <p className="font-medium text-sm">Next Step</p>
-                <p className="text-xs text-muted-foreground">Another agent, email, etc.</p>
-              </div>
+            <span className="text-muted-foreground">triggers action</span>
+            <ArrowRight className="w-4 h-4 text-violet-400" />
+            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm">
+              <Users className="w-5 h-5 text-indigo-600" />
             </div>
+            <span className="text-muted-foreground">next step</span>
           </div>
         </CardContent>
       </Card>
 
-      {/* Existing Automations */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Your Automations</h2>
-
-        {automations.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="py-12 text-center">
-              <div className="w-16 h-16 rounded-full bg-violet-100 flex items-center justify-center mx-auto mb-4">
-                <Zap className="w-8 h-8 text-violet-600" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">No automations yet</h3>
-              <p className="text-muted-foreground mb-4 max-w-md mx-auto">
-                Create your first automation to connect {mockAgent.name}'s work to other agents or actions.
-              </p>
-              <Button onClick={() => setShowCreateDialog(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Automation
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {automations.map((automation) => {
-              const TriggerIcon = getTriggerIcon(automation.trigger);
-              const ActionIcon = getActionIcon(automation.action);
-              const targetAgent = automation.actionConfig.target_agent_id
-                ? AGENT_ROSTER.find((a) => a.id === automation.actionConfig.target_agent_id)
-                : null;
-
-              return (
-                <Card
-                  key={automation.id}
-                  className={`transition-all ${
-                    automation.is_active
-                      ? "hover:shadow-md hover:border-violet-200"
-                      : "opacity-60"
-                  }`}
-                >
-                  <CardContent className="py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        {/* Flow visualization */}
-                        <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
-                            <TriggerIcon className="w-5 h-5 text-violet-600" />
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-gray-400" />
-                          <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
-                            <ActionIcon className="w-5 h-5 text-indigo-600" />
-                          </div>
-                          {targetAgent && (
-                            <>
-                              <ChevronRight className="w-4 h-4 text-gray-400" />
-                              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-100 to-indigo-100 flex items-center justify-center text-xl">
-                                {targetAgent.personality.avatar}
-                              </div>
-                            </>
-                          )}
-                        </div>
-
-                        <div>
-                          <h3 className="font-medium">{automation.name}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {triggerTypes.find((t) => t.id === automation.trigger)?.name}
-                            {" → "}
-                            {actionTypes.find((a) => a.id === automation.action)?.name}
-                            {targetAgent && ` (${targetAgent.name})`}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <div className="text-right text-sm">
-                          <p className="font-medium">{automation.times_triggered} runs</p>
-                          <p className="text-xs text-muted-foreground">
-                            {automation.last_triggered_at
-                              ? `Last: ${new Date(automation.last_triggered_at).toLocaleDateString()}`
-                              : "Never triggered"}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={automation.is_active}
-                            onCheckedChange={() => handleToggleAutomation(automation.id)}
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => handleDeleteAutomation(automation.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
+      {/* Automations List */}
+      {automations.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="py-12 text-center">
+            <Zap className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+            <p className="font-medium">No automations yet</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Create an automation to connect {mockAgent.name}'s work.
+            </p>
+            <Button onClick={() => setShowCreateDialog(true)} className="bg-violet-600 hover:bg-violet-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Automation
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {automations.map((automation) => (
+            <Card key={automation.id} className={automation.is_active ? "" : "opacity-50"}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  {/* Flow visualization */}
+                  <div className="flex items-center gap-2">
+                    <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center text-lg">
+                      {mockAgent.avatar}
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                    {automation.action === "send_to_agent" ? (
+                      <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center text-lg">
+                        {getTargetAgentAvatar(automation.targetAgentId)}
+                      </div>
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                        <Mail className="w-5 h-5 text-blue-600" />
+                      </div>
+                    )}
+                  </div>
 
-      {/* Suggested Automations */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Suggested Automations</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card className="border-dashed hover:border-violet-200 transition-colors cursor-pointer group">
-            <CardContent className="py-4">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-                  <Globe className="w-5 h-5 text-pink-600" />
+                  {/* Info */}
+                  <div className="flex-1">
+                    <p className="font-medium">{automation.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      When deliverable created →{" "}
+                      {automation.action === "send_to_agent"
+                        ? `Send to ${getTargetAgentName(automation.targetAgentId)}`
+                        : `Email ${automation.email}`}
+                    </p>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      checked={automation.is_active}
+                      onCheckedChange={() => handleToggle(automation.id)}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive"
+                      onClick={() => handleDelete(automation.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h4 className="font-medium group-hover:text-violet-600 transition-colors">
-                    Auto-Post to Social Media
-                  </h4>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Quick Templates */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground">Quick Templates</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Card
+            className="cursor-pointer hover:border-violet-200 transition-colors"
+            onClick={() => {
+              setName("Blog to Social Posts");
+              setAction("send_to_agent");
+              setShowCreateDialog(true);
+            }}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-violet-600" />
+                </div>
+                <div>
+                  <p className="font-medium">Blog to Social Posts</p>
                   <p className="text-sm text-muted-foreground">
-                    When {mockAgent.name} creates content, automatically schedule it for social posting
+                    Send blog posts to another agent for social content
                   </p>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => setShowCreateDialog(true)}>
-                  <Plus className="w-4 h-4" />
-                </Button>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-dashed hover:border-violet-200 transition-colors cursor-pointer group">
-            <CardContent className="py-4">
+          <Card
+            className="cursor-pointer hover:border-violet-200 transition-colors"
+            onClick={() => {
+              setName("Email Notification");
+              setAction("send_email");
+              setShowCreateDialog(true);
+            }}
+          >
+            <CardContent className="p-4">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
                   <Mail className="w-5 h-5 text-blue-600" />
                 </div>
-                <div className="flex-1">
-                  <h4 className="font-medium group-hover:text-violet-600 transition-colors">
-                    Email Weekly Summary
-                  </h4>
+                <div>
+                  <p className="font-medium">Email Notification</p>
                   <p className="text-sm text-muted-foreground">
-                    Get a weekly email with all content created by {mockAgent.name}
+                    Get an email when content is created
                   </p>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => setShowCreateDialog(true)}>
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-dashed hover:border-violet-200 transition-colors cursor-pointer group">
-            <CardContent className="py-4">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-green-600" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-medium group-hover:text-violet-600 transition-colors">
-                    SEO Review Pipeline
-                  </h4>
-                  <p className="text-sm text-muted-foreground">
-                    Send blog posts to SEO Specialist for optimization before publishing
-                  </p>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => setShowCreateDialog(true)}>
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-dashed hover:border-violet-200 transition-colors cursor-pointer group">
-            <CardContent className="py-4">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-orange-600" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-medium group-hover:text-violet-600 transition-colors">
-                    Scheduled Content Creation
-                  </h4>
-                  <p className="text-sm text-muted-foreground">
-                    Have {mockAgent.name} create content automatically on a schedule
-                  </p>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => setShowCreateDialog(true)}>
-                  <Plus className="w-4 h-4" />
-                </Button>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Create Automation Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-2xl">
+      {/* Create Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={(open) => {
+        setShowCreateDialog(open);
+        if (!open) resetForm();
+      }}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Create Automation</DialogTitle>
             <DialogDescription>
-              Step {createStep} of 3: {
-                createStep === 1 ? "Choose trigger" :
-                createStep === 2 ? "Choose action" :
-                "Configure & name"
-              }
+              Set up an action when {mockAgent.name} creates content
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-4">
-            {/* Step 1: Choose Trigger */}
-            {createStep === 1 && (
-              <div className="space-y-3">
-                <p className="text-sm font-medium mb-4">When should this automation run?</p>
-                {triggerTypes.map((trigger) => {
-                  const Icon = trigger.icon;
-                  return (
-                    <div
-                      key={trigger.id}
-                      onClick={() => {
-                        setNewAutomation({ ...newAutomation, trigger: trigger.id });
-                        setCreateStep(2);
-                      }}
-                      className={`p-4 border rounded-lg cursor-pointer transition-all hover:border-violet-300 hover:bg-violet-50 ${
-                        newAutomation.trigger === trigger.id ? "border-violet-500 bg-violet-50" : ""
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
-                          <Icon className="w-5 h-5 text-violet-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium">{trigger.name}</h4>
-                          <p className="text-sm text-muted-foreground">{trigger.description}</p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium block mb-1.5">Name</label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., Blog to Social Posts"
+              />
+            </div>
 
-            {/* Step 2: Choose Action */}
-            {createStep === 2 && (
-              <div className="space-y-3">
-                <p className="text-sm font-medium mb-4">What should happen?</p>
-                {actionTypes.map((action) => {
-                  const Icon = action.icon;
-                  return (
-                    <div
-                      key={action.id}
-                      onClick={() => {
-                        setNewAutomation({ ...newAutomation, action: action.id });
-                        setCreateStep(3);
-                      }}
-                      className={`p-4 border rounded-lg cursor-pointer transition-all hover:border-violet-300 hover:bg-violet-50 ${
-                        newAutomation.action === action.id ? "border-violet-500 bg-violet-50" : ""
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`w-10 h-10 rounded-lg bg-${action.color}-100 flex items-center justify-center`}>
-                          <Icon className={`w-5 h-5 text-${action.color}-600`} />
-                        </div>
-                        <div>
-                          <h4 className="font-medium">{action.name}</h4>
-                          <p className="text-sm text-muted-foreground">{action.description}</p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <div>
+              <label className="text-sm font-medium block mb-1.5">When</label>
+              <Select value={trigger} onValueChange={setTrigger}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="deliverable">Deliverable is created</SelectItem>
+                  <SelectItem value="task">Task is completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            {/* Step 3: Configure */}
-            {createStep === 3 && (
-              <div className="space-y-4">
-                <div>
-                  <Label>Automation Name</Label>
-                  <Input
-                    value={newAutomation.name}
-                    onChange={(e) => setNewAutomation({ ...newAutomation, name: e.target.value })}
-                    placeholder="e.g., Blog to Social Posts"
-                    className="mt-1"
-                  />
-                </div>
+            <div>
+              <label className="text-sm font-medium block mb-1.5">Then</label>
+              <Select value={action} onValueChange={setAction}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="send_to_agent">Send to another agent</SelectItem>
+                  <SelectItem value="send_email">Send email notification</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-                {newAutomation.action === "send_to_agent" && (
-                  <div>
-                    <Label>Target Agent</Label>
-                    <Select
-                      value={newAutomation.actionConfig.target_agent_id || ""}
-                      onValueChange={(v) =>
-                        setNewAutomation({
-                          ...newAutomation,
-                          actionConfig: { ...newAutomation.actionConfig, target_agent_id: v },
-                        })
-                      }
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select agent to receive content" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {receiverAgents.map((agent) => (
-                          <SelectItem key={agent.id} value={agent.id}>
-                            <span className="flex items-center gap-2">
-                              <span>{agent.personality.avatar}</span>
-                              <span>{agent.name}</span>
-                              <span className="text-muted-foreground">- {agent.role}</span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {newAutomation.action === "send_email" && (
-                  <div>
-                    <Label>Email Recipients</Label>
-                    <Input
-                      value={newAutomation.actionConfig.recipients || ""}
-                      onChange={(e) =>
-                        setNewAutomation({
-                          ...newAutomation,
-                          actionConfig: { ...newAutomation.actionConfig, recipients: e.target.value },
-                        })
-                      }
-                      placeholder="email@example.com"
-                      className="mt-1"
-                    />
-                  </div>
-                )}
-
-                {newAutomation.action === "webhook" && (
-                  <div>
-                    <Label>Webhook URL</Label>
-                    <Input
-                      value={newAutomation.actionConfig.webhook_url || ""}
-                      onChange={(e) =>
-                        setNewAutomation({
-                          ...newAutomation,
-                          actionConfig: { ...newAutomation.actionConfig, webhook_url: e.target.value },
-                        })
-                      }
-                      placeholder="https://..."
-                      className="mt-1"
-                    />
-                  </div>
-                )}
-
-                {/* Summary */}
-                <div className="p-4 bg-gray-50 rounded-lg mt-4">
-                  <h4 className="font-medium mb-2">Summary</h4>
-                  <p className="text-sm text-muted-foreground">
-                    When{" "}
-                    <span className="font-medium text-gray-900">
-                      {triggerTypes.find((t) => t.id === newAutomation.trigger)?.name.toLowerCase()}
-                    </span>
-                    , then{" "}
-                    <span className="font-medium text-gray-900">
-                      {actionTypes.find((a) => a.id === newAutomation.action)?.name.toLowerCase()}
-                    </span>
-                    {newAutomation.actionConfig.target_agent_id && (
-                      <>
-                        {" to "}
-                        <span className="font-medium text-gray-900">
-                          {AGENT_ROSTER.find((a) => a.id === newAutomation.actionConfig.target_agent_id)?.name}
+            {action === "send_to_agent" && (
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Target Agent</label>
+                <Select value={targetAgentId} onValueChange={setTargetAgentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {receiverAgents.map((agent) => (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        <span className="flex items-center gap-2">
+                          <span>{agent.personality.avatar}</span>
+                          <span>{agent.name}</span>
                         </span>
-                      </>
-                    )}
-                    .
-                  </p>
-                </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {action === "send_email" && (
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Email</label>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                />
               </div>
             )}
           </div>
 
           <DialogFooter>
-            {createStep > 1 && (
-              <Button variant="outline" onClick={() => setCreateStep(createStep - 1)}>
-                Back
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => {
-              setShowCreateDialog(false);
-              setCreateStep(1);
-              setNewAutomation({ name: "", trigger: "", triggerConfig: {}, action: "", actionConfig: {} });
-            }}>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
               Cancel
             </Button>
-            {createStep === 3 && (
-              <Button
-                onClick={handleCreateAutomation}
-                disabled={!newAutomation.name}
-                className="bg-gradient-to-r from-violet-600 to-indigo-600"
-              >
-                Create Automation
-              </Button>
-            )}
+            <Button onClick={handleCreate} className="bg-violet-600 hover:bg-violet-700">
+              Create
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
