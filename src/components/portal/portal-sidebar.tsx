@@ -29,6 +29,7 @@ import {
   Calendar,
   MessageSquare,
   Plug,
+  ClipboardCheck,
 } from "lucide-react";
 
 interface SidebarItem {
@@ -66,6 +67,7 @@ const sidebarGroups: SidebarGroup[] = [
     items: [
       { label: "Deliverables", href: "/portal/deliverables", icon: FolderOpen },
       { label: "Analytics", href: "/portal/analytics", icon: BarChart3 },
+      { label: "Review Queue", href: "/portal/review-queue", icon: ClipboardCheck },
     ],
   },
   {
