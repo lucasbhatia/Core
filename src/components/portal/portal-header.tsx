@@ -22,6 +22,8 @@ import {
 import { logoutPortal } from "@/app/actions/portal-auth";
 import NotificationDropdown from "./notification-dropdown";
 import RunningAutomations from "./running-automations";
+import { UsageMeter } from "./usage-meter";
+import { UpgradeModal, useUpgradeModal } from "./upgrade-modal";
 import type { Client } from "@/types/database";
 
 interface PortalHeaderProps {
@@ -37,6 +39,7 @@ export default function PortalHeader({
 }: PortalHeaderProps) {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const upgradeModal = useUpgradeModal();
 
   async function handleLogout() {
     setIsLoggingOut(true);
@@ -68,6 +71,12 @@ export default function PortalHeader({
 
         {/* Right: Actions */}
         <div className="flex items-center gap-3">
+          {/* Usage Meter */}
+          <UsageMeter
+            clientId={client.id}
+            onUpgradeClick={() => upgradeModal.openModal()}
+          />
+
           {/* Running Automations */}
           <RunningAutomations />
 
@@ -122,6 +131,16 @@ export default function PortalHeader({
           </DropdownMenu>
         </div>
       </div>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={upgradeModal.isOpen}
+        onClose={upgradeModal.closeModal}
+        currentPlan={client.plan_tier || "free"}
+        triggerReason={upgradeModal.triggerReason}
+        clientId={client.id}
+        hasExistingSubscription={!!client.stripe_customer_id}
+      />
     </header>
   );
 }

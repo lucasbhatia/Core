@@ -11,7 +11,16 @@ export interface PlanLimits {
   custom_agents: boolean;
   webhook_triggers: boolean;
   team_collaboration: boolean;
+  model_access: string[];
 }
+
+// Model access by plan tier
+export const MODEL_ACCESS: Record<string, string[]> = {
+  free: ["haiku"],
+  starter: ["haiku", "sonnet"],
+  pro: ["haiku", "sonnet"],
+  enterprise: ["haiku", "sonnet", "opus"],
+};
 
 // Default plan configurations
 export const PLAN_LIMITS: Record<string, PlanLimits> = {
@@ -25,6 +34,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     custom_agents: false,
     webhook_triggers: false,
     team_collaboration: false,
+    model_access: ["haiku"],
   },
   starter: {
     ai_actions_per_day: 50,
@@ -36,6 +46,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     custom_agents: false,
     webhook_triggers: true,
     team_collaboration: false,
+    model_access: ["haiku", "sonnet"],
   },
   pro: {
     ai_actions_per_day: 200,
@@ -47,6 +58,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     custom_agents: true,
     webhook_triggers: true,
     team_collaboration: true,
+    model_access: ["haiku", "sonnet"],
   },
   enterprise: {
     ai_actions_per_day: -1, // Unlimited
@@ -58,6 +70,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     custom_agents: true,
     webhook_triggers: true,
     team_collaboration: true,
+    model_access: ["haiku", "sonnet", "opus"],
   },
 };
 
@@ -194,4 +207,92 @@ export function getUpgradeRecommendation(currentPlan: string): string | null {
     pro: "enterprise",
   };
   return upgradeMap[currentPlan] || null;
+}
+
+// Check if a specific model is accessible for a plan
+export function checkModelAccess(
+  modelId: string,
+  planTier: string
+): PlanCheckResult {
+  const limits = PLAN_LIMITS[planTier] || PLAN_LIMITS.free;
+  const hasAccess = limits.model_access.includes(modelId);
+
+  if (!hasAccess) {
+    const modelNames: Record<string, string> = {
+      haiku: "Claude Haiku",
+      sonnet: "Claude Sonnet",
+      opus: "Claude Opus",
+    };
+
+    return {
+      allowed: false,
+      reason: `${modelNames[modelId] || modelId} is not available on your current plan`,
+      upgrade_required: true,
+    };
+  }
+
+  return { allowed: true };
+}
+
+// Get the default model for a plan
+export function getDefaultModel(planTier: string): string {
+  const limits = PLAN_LIMITS[planTier] || PLAN_LIMITS.free;
+  // Prefer sonnet if available, otherwise haiku
+  if (limits.model_access.includes("sonnet")) {
+    return "sonnet";
+  }
+  return "haiku";
+}
+
+// Get all available models for a plan
+export function getAvailableModels(planTier: string): string[] {
+  const limits = PLAN_LIMITS[planTier] || PLAN_LIMITS.free;
+  return limits.model_access;
+}
+
+// Map model IDs to Claude API model strings
+export function getClaudeModelId(modelId: string): string {
+  const modelMap: Record<string, string> = {
+    haiku: "claude-3-haiku-20240307",
+    sonnet: "claude-sonnet-4-20250514",
+    opus: "claude-opus-4-20250514",
+  };
+  return modelMap[modelId] || modelMap.sonnet;
+}
+
+// Interface for DB-loaded plan limits
+export interface DBPlanLimits {
+  id: string;
+  name: string;
+  ai_actions_daily: number;
+  agent_tasks_daily: number;
+  automations_limit: number;
+  ai_tokens_limit: number;
+  model_access: string[];
+  features_enabled: {
+    review_queue?: boolean;
+    custom_agents?: boolean;
+    webhook_triggers?: boolean;
+    team_collaboration?: boolean;
+    api_access?: boolean;
+    priority_support?: boolean;
+    custom_integrations?: boolean;
+    white_label?: boolean;
+  };
+}
+
+// Convert DB plan limits to PlanLimits interface
+export function convertDBPlanLimits(dbLimits: DBPlanLimits): PlanLimits {
+  return {
+    ai_actions_per_day: dbLimits.ai_actions_daily,
+    agent_tasks_per_day: dbLimits.agent_tasks_daily,
+    automations_total: dbLimits.automations_limit,
+    ai_tokens_per_month: dbLimits.ai_tokens_limit,
+    review_queue_enabled: dbLimits.features_enabled?.review_queue ?? true,
+    advanced_ai_models: dbLimits.model_access.includes("sonnet") || dbLimits.model_access.includes("opus"),
+    custom_agents: dbLimits.features_enabled?.custom_agents ?? false,
+    webhook_triggers: dbLimits.features_enabled?.webhook_triggers ?? false,
+    team_collaboration: dbLimits.features_enabled?.team_collaboration ?? false,
+    model_access: dbLimits.model_access,
+  };
 }

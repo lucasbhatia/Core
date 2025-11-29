@@ -417,6 +417,266 @@ export function getTeamInviteEmail(
   return { subject, html, text };
 }
 
+// Agent Task Completed Email
+export function getAgentTaskCompletedEmail(
+  clientName: string,
+  agentName: string,
+  taskTitle: string,
+  taskId: string,
+  outputPreview: string
+) {
+  const subject = `Agent "${agentName}" completed: ${taskTitle}`;
+  const portalUrl = `${APP_URL}/portal/review-queue`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+          <tr>
+            <td style="padding: 40px 40px 20px;">
+              <h1 style="margin: 0 0 8px; color: #7c3aed; font-size: 24px; font-weight: 600;">${APP_NAME}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 20px 40px;">
+              <div style="background-color: #dbeafe; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                <p style="margin: 0; color: #1e40af; font-size: 14px; font-weight: 600;">Agent Task Completed</p>
+              </div>
+              <h2 style="margin: 0 0 16px; color: #18181b; font-size: 18px; font-weight: 600;">Hi ${clientName},</h2>
+              <p style="margin: 0 0 24px; color: #3f3f46; font-size: 16px; line-height: 1.6;">
+                <strong>"${agentName}"</strong> has completed the task: <strong>"${taskTitle}"</strong>
+              </p>
+              <table width="100%" style="background-color: #f4f4f5; border-radius: 8px; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 16px;">
+                    <p style="margin: 0 0 8px; color: #71717a; font-size: 12px; text-transform: uppercase;">Output Preview</p>
+                    <p style="margin: 0; color: #18181b; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${outputPreview.slice(0, 300)}${outputPreview.length > 300 ? '...' : ''}</p>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 0 0 24px; color: #71717a; font-size: 14px;">
+                This output is waiting for your review in the Review Queue.
+              </p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <a href="${portalUrl}" style="display: inline-block; background-color: #7c3aed; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+                      Review Now
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 20px 40px 40px;">
+              <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 0 0 20px;">
+              <p style="margin: 0; color: #a1a1aa; font-size: 12px; text-align: center;">
+                You can manage notification preferences in your portal settings.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Hi ${clientName},\n\n"${agentName}" has completed the task: "${taskTitle}"\n\nOutput Preview:\n${outputPreview.slice(0, 300)}${outputPreview.length > 300 ? '...' : ''}\n\nThis output is waiting for your review.\n\nReview now: ${portalUrl}`;
+
+  return { subject, html, text };
+}
+
+// AI Draft Ready for Review Email
+export function getAIDraftReadyEmail(
+  clientName: string,
+  actionType: string,
+  entityTitle: string,
+  outputPreview: string
+) {
+  const subject = `AI Draft Ready: ${actionType} for "${entityTitle}"`;
+  const portalUrl = `${APP_URL}/portal/review-queue`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+          <tr>
+            <td style="padding: 40px 40px 20px;">
+              <h1 style="margin: 0 0 8px; color: #7c3aed; font-size: 24px; font-weight: 600;">${APP_NAME}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 20px 40px;">
+              <div style="background-color: #ede9fe; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                <p style="margin: 0; color: #5b21b6; font-size: 14px; font-weight: 600;">AI Draft Ready for Review</p>
+              </div>
+              <h2 style="margin: 0 0 16px; color: #18181b; font-size: 18px; font-weight: 600;">Hi ${clientName},</h2>
+              <p style="margin: 0 0 24px; color: #3f3f46; font-size: 16px; line-height: 1.6;">
+                An AI <strong>${actionType}</strong> has been generated for <strong>"${entityTitle}"</strong> and is ready for your review.
+              </p>
+              <table width="100%" style="background-color: #f4f4f5; border-radius: 8px; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 16px;">
+                    <p style="margin: 0 0 8px; color: #71717a; font-size: 12px; text-transform: uppercase;">Preview</p>
+                    <p style="margin: 0; color: #18181b; font-size: 14px; line-height: 1.6;">${outputPreview.slice(0, 250)}${outputPreview.length > 250 ? '...' : ''}</p>
+                  </td>
+                </tr>
+              </table>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <a href="${portalUrl}" style="display: inline-block; background-color: #7c3aed; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+                      Review & Approve
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 20px 40px 40px;">
+              <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 0 0 20px;">
+              <p style="margin: 0; color: #a1a1aa; font-size: 12px; text-align: center;">
+                You can manage notification preferences in your portal settings.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Hi ${clientName},\n\nAn AI ${actionType} has been generated for "${entityTitle}" and is ready for your review.\n\nPreview:\n${outputPreview.slice(0, 250)}${outputPreview.length > 250 ? '...' : ''}\n\nReview now: ${portalUrl}`;
+
+  return { subject, html, text };
+}
+
+// Automation Failed Email (enhanced version)
+export function getAutomationFailedDetailedEmail(
+  clientName: string,
+  automationName: string,
+  runId: string,
+  errorMessage: string,
+  triggerType: string,
+  failedStep?: string
+) {
+  const subject = `Automation Failed: ${automationName}`;
+  const portalUrl = `${APP_URL}/portal/automations`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+          <tr>
+            <td style="padding: 40px 40px 20px;">
+              <h1 style="margin: 0 0 8px; color: #7c3aed; font-size: 24px; font-weight: 600;">${APP_NAME}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 20px 40px;">
+              <div style="background-color: #fee2e2; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                <p style="margin: 0; color: #991b1b; font-size: 14px; font-weight: 600;">Automation Failed</p>
+              </div>
+              <h2 style="margin: 0 0 16px; color: #18181b; font-size: 18px; font-weight: 600;">Hi ${clientName},</h2>
+              <p style="margin: 0 0 24px; color: #3f3f46; font-size: 16px; line-height: 1.6;">
+                Your automation <strong>"${automationName}"</strong> failed to complete.
+              </p>
+
+              <table width="100%" style="background-color: #f4f4f5; border-radius: 8px; margin-bottom: 16px;">
+                <tr>
+                  <td style="padding: 16px;">
+                    <table width="100%">
+                      <tr>
+                        <td width="50%" style="padding: 4px 0;">
+                          <p style="margin: 0; color: #71717a; font-size: 12px;">Trigger Type</p>
+                          <p style="margin: 4px 0 0; color: #18181b; font-size: 14px; font-weight: 500;">${triggerType}</p>
+                        </td>
+                        <td width="50%" style="padding: 4px 0;">
+                          <p style="margin: 0; color: #71717a; font-size: 12px;">Run ID</p>
+                          <p style="margin: 4px 0 0; color: #18181b; font-size: 14px; font-family: monospace;">${runId.slice(0, 8)}...</p>
+                        </td>
+                      </tr>
+                      ${failedStep ? `
+                      <tr>
+                        <td colspan="2" style="padding: 8px 0 0;">
+                          <p style="margin: 0; color: #71717a; font-size: 12px;">Failed Step</p>
+                          <p style="margin: 4px 0 0; color: #18181b; font-size: 14px;">${failedStep}</p>
+                        </td>
+                      </tr>
+                      ` : ''}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <table width="100%" style="background-color: #fef2f2; border-radius: 8px; border: 1px solid #fecaca; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 16px;">
+                    <p style="margin: 0 0 8px; color: #991b1b; font-size: 12px; text-transform: uppercase; font-weight: 600;">Error Details</p>
+                    <p style="margin: 0; color: #7f1d1d; font-size: 14px; font-family: monospace; white-space: pre-wrap;">${errorMessage}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <a href="${portalUrl}" style="display: inline-block; background-color: #7c3aed; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+                      View Automation
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 20px 40px 40px;">
+              <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 0 0 20px;">
+              <p style="margin: 0; color: #a1a1aa; font-size: 12px; text-align: center;">
+                You can manage notification preferences in your portal settings.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Hi ${clientName},\n\nYour automation "${automationName}" failed to complete.\n\nTrigger Type: ${triggerType}\nRun ID: ${runId}\n${failedStep ? `Failed Step: ${failedStep}\n` : ''}\nError: ${errorMessage}\n\nView automation: ${portalUrl}`;
+
+  return { subject, html, text };
+}
+
 export function getWeeklyReportEmail(
   clientName: string,
   stats: {
