@@ -922,32 +922,32 @@ export default function DashboardHome({
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Link href="/portal/tasks" className="group">
+        <Link href="/portal/planner" className="group">
           <Card className="h-full transition-all hover:shadow-lg hover:border-violet-200 bg-gradient-to-br from-violet-50/50 to-white">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="w-11 h-11 rounded-xl bg-violet-100 flex items-center justify-center group-hover:bg-violet-200 transition-colors">
-                  <CheckSquare className="w-5 h-5 text-violet-600" />
+                  <Calendar className="w-5 h-5 text-violet-600" />
                 </div>
                 <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-violet-600 transition-colors" />
               </div>
-              <h3 className="font-semibold text-base mb-0.5">Tasks</h3>
-              <p className="text-sm text-muted-foreground">{todayTasks.length} due today</p>
+              <h3 className="font-semibold text-base mb-0.5">Planner</h3>
+              <p className="text-sm text-muted-foreground">{todayTasks.length} tasks &middot; {todayEvents.length} events</p>
             </CardContent>
           </Card>
         </Link>
 
-        <Link href="/portal/calendar" className="group">
+        <Link href="/portal/ai-inbox" className="group">
           <Card className="h-full transition-all hover:shadow-lg hover:border-blue-200 bg-gradient-to-br from-blue-50/50 to-white">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                  <Calendar className="w-5 h-5 text-blue-600" />
+                  <MessageSquare className="w-5 h-5 text-blue-600" />
                 </div>
                 <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-blue-600 transition-colors" />
               </div>
-              <h3 className="font-semibold text-base mb-0.5">Calendar</h3>
-              <p className="text-sm text-muted-foreground">{todayEvents.length} events today</p>
+              <h3 className="font-semibold text-base mb-0.5">Ask AI</h3>
+              <p className="text-sm text-muted-foreground">Get help instantly</p>
             </CardContent>
           </Card>
         </Link>
@@ -967,17 +967,17 @@ export default function DashboardHome({
           </Card>
         </Link>
 
-        <Link href="/portal/projects" className="group">
+        <Link href="/portal/workforce" className="group">
           <Card className="h-full transition-all hover:shadow-lg hover:border-amber-200 bg-gradient-to-br from-amber-50/50 to-white">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="w-11 h-11 rounded-xl bg-amber-100 flex items-center justify-center group-hover:bg-amber-200 transition-colors">
-                  <FolderKanban className="w-5 h-5 text-amber-600" />
+                  <Bot className="w-5 h-5 text-amber-600" />
                 </div>
                 <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-amber-600 transition-colors" />
               </div>
-              <h3 className="font-semibold text-base mb-0.5">Projects</h3>
-              <p className="text-sm text-muted-foreground">Manage workflows</p>
+              <h3 className="font-semibold text-base mb-0.5">AI Workforce</h3>
+              <p className="text-sm text-muted-foreground">{activeAgents.length} agents active</p>
             </CardContent>
           </Card>
         </Link>
@@ -995,7 +995,7 @@ export default function DashboardHome({
                 Today&apos;s Schedule
               </CardTitle>
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/portal/calendar" className="text-violet-600 hover:text-violet-700">
+                <Link href="/portal/planner" className="text-violet-600 hover:text-violet-700">
                   View all
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </Link>
@@ -1045,7 +1045,7 @@ export default function DashboardHome({
                 Today&apos;s Tasks
               </CardTitle>
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/portal/tasks" className="text-violet-600 hover:text-violet-700">
+                <Link href="/portal/planner" className="text-violet-600 hover:text-violet-700">
                   View all
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </Link>
@@ -1061,7 +1061,7 @@ export default function DashboardHome({
                   <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-3" />
                   <p className="text-sm text-muted-foreground">All caught up! No tasks due today.</p>
                   <Button variant="outline" size="sm" className="mt-3" asChild>
-                    <Link href="/portal/tasks">
+                    <Link href="/portal/planner">
                       <PlusCircle className="w-4 h-4 mr-2" />
                       Add Task
                     </Link>
@@ -1286,7 +1286,7 @@ export default function DashboardHome({
                 Active Projects
               </CardTitle>
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/portal/projects" className="text-violet-600 hover:text-violet-700">
+                <Link href="/portal/planner" className="text-violet-600 hover:text-violet-700">
                   View all
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </Link>
@@ -1298,7 +1298,7 @@ export default function DashboardHome({
                   <FolderKanban className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
                   <p className="text-sm text-muted-foreground">No active projects</p>
                   <Button variant="outline" size="sm" className="mt-3" asChild>
-                    <Link href="/portal/projects/new">
+                    <Link href="/portal/planner">
                       <PlusCircle className="w-4 h-4 mr-2" />
                       Create Project
                     </Link>
@@ -1376,7 +1376,7 @@ export default function DashboardHome({
                 AI Workforce
               </CardTitle>
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/portal/ai-workforce" className="text-violet-600 hover:text-violet-700">
+                <Link href="/portal/workforce" className="text-violet-600 hover:text-violet-700">
                   Manage
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </Link>
@@ -1495,7 +1495,7 @@ export default function DashboardHome({
             </CardContent>
           </Card>
 
-          {/* Quick Create Actions - Enhanced */}
+          {/* Quick Create Actions - Simplified */}
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
@@ -1506,7 +1506,7 @@ export default function DashboardHome({
             <CardContent>
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-violet-200 hover:bg-violet-50/50" asChild>
-                  <Link href="/portal/tasks/new">
+                  <Link href="/portal/planner">
                     <CheckSquare className="w-4 h-4 text-violet-600" />
                     <span className="text-xs">New Task</span>
                   </Link>
@@ -1517,22 +1517,10 @@ export default function DashboardHome({
                     <span className="text-xs">Automation</span>
                   </Link>
                 </Button>
-                <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-amber-200 hover:bg-amber-50/50" asChild>
-                  <Link href="/portal/projects/new">
-                    <FolderKanban className="w-4 h-4 text-amber-600" />
-                    <span className="text-xs">Project</span>
-                  </Link>
-                </Button>
                 <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-blue-200 hover:bg-blue-50/50" asChild>
-                  <Link href="/portal/ai-workforce/hire">
+                  <Link href="/portal/workforce">
                     <Bot className="w-4 h-4 text-blue-600" />
                     <span className="text-xs">Hire Agent</span>
-                  </Link>
-                </Button>
-                <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-cyan-200 hover:bg-cyan-50/50" asChild>
-                  <Link href="/portal/templates">
-                    <Layers className="w-4 h-4 text-cyan-600" />
-                    <span className="text-xs">Template</span>
                   </Link>
                 </Button>
                 <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-indigo-200 hover:bg-indigo-50/50" asChild>
