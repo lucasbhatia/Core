@@ -559,13 +559,42 @@ export async function chatWithAgent(
     .limit(20); // Last 20 messages for context
 
   // Build messages array for API
-  const apiMessages: { role: "user" | "assistant"; content: string }[] = (messages || []).map((m) => ({
+  const apiMessages: Anthropic.MessageParam[] = (messages || []).map((m) => ({
     role: m.role as "user" | "assistant",
     content: m.content,
   }));
 
-  // Add new user message
-  apiMessages.push({ role: "user", content: request.message });
+  // Add new user message with attachments if present
+  if (request.attachments && request.attachments.length > 0) {
+    const contentBlocks: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam)[] = [];
+
+    // Add text content first
+    contentBlocks.push({ type: "text", text: request.message });
+
+    // Add image attachments (Anthropic supports images)
+    for (const attachment of request.attachments) {
+      if (attachment.type?.startsWith("image/") && attachment.data) {
+        contentBlocks.push({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: attachment.type as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+            data: attachment.data.replace(/^data:image\/\w+;base64,/, ""),
+          },
+        });
+      } else if (attachment.content) {
+        // For non-image files, include content as text
+        contentBlocks.push({
+          type: "text",
+          text: `\n\n--- Attached File: ${attachment.name || "file"} ---\n${attachment.content}\n--- End of File ---`,
+        });
+      }
+    }
+
+    apiMessages.push({ role: "user", content: contentBlocks });
+  } else {
+    apiMessages.push({ role: "user", content: request.message });
+  }
 
   // Save user message
   const { data: userMessage, error: userMsgError } = await supabase

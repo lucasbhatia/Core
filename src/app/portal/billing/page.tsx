@@ -3,6 +3,7 @@ import { getPortalSession, getClientAutomations } from "@/app/actions/portal-aut
 import { createClient } from "@/lib/supabase/server";
 import PortalShell from "@/components/portal/portal-shell";
 import BillingDashboard from "./billing-dashboard";
+import { PLAN_LIMITS } from "@/lib/plan-gating";
 
 export default async function BillingPage() {
   const session = await getPortalSession();
@@ -12,30 +13,49 @@ export default async function BillingPage() {
   }
 
   const supabase = await createClient();
+  const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
 
-  // Fetch usage data
-  const [automations, runsResult] = await Promise.all([
+  // Fetch usage data and subscription info in parallel
+  const [automations, runsResult, usageResult, subscriptionResult] = await Promise.all([
     getClientAutomations(session.clientId),
     supabase
       .from("automation_runs")
       .select("id, created_at, duration_ms")
       .eq("client_id", session.clientId)
       .gte("created_at", new Date(new Date().setDate(1)).toISOString()),
+    supabase
+      .from("client_usage")
+      .select("*")
+      .eq("client_id", session.clientId)
+      .eq("month", currentMonth)
+      .single(),
+    supabase
+      .from("client_subscriptions")
+      .select("*, subscription_plans(*)")
+      .eq("client_id", session.clientId)
+      .eq("status", "active")
+      .single(),
   ]);
 
   const runs = runsResult.data || [];
+  const usage = usageResult.data;
+  const subscription = subscriptionResult.data;
   const activeAutomations = automations?.filter((a) => a.automation_status === "active").length || 0;
 
-  // Calculate usage
+  // Get plan limits
+  const planName = (subscription?.subscription_plans as { name?: string } | null)?.name?.toLowerCase() || session.client.plan_tier || "free";
+  const planLimits = PLAN_LIMITS[planName] || PLAN_LIMITS.free;
+
+  // Calculate usage from actual data
   const currentUsage = {
     automationRuns: runs.length,
-    runLimit: 500,
-    aiTokens: Math.floor(Math.random() * 50000) + 10000, // Placeholder - would come from actual tracking
-    tokenLimit: 100000,
+    runLimit: planLimits.agent_tasks_per_day * 30, // Monthly approximation
+    aiTokens: usage?.ai_tokens_used || 0,
+    tokenLimit: planLimits.ai_tokens_per_month,
     activeAutomations,
-    automationLimit: 15,
-    storageUsed: 256, // MB - placeholder
-    storageLimit: 1024, // MB
+    automationLimit: planLimits.automations_total,
+    storageUsed: usage?.storage_used_mb || 0,
+    storageLimit: 1024, // 1GB default
   };
 
   // Group runs by day for billing period
@@ -49,18 +69,22 @@ export default async function BillingPage() {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, count]) => ({ date, count }));
 
+  // Get plan details
+  const plan = subscription?.subscription_plans as { name?: string; price?: number } | null;
+  const currentPlan = {
+    name: plan?.name || planName.charAt(0).toUpperCase() + planName.slice(1),
+    price: plan?.price || 0,
+    billingCycle: "monthly" as const,
+    nextBillingDate: subscription?.current_period_end || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString(),
+  };
+
   return (
     <PortalShell client={session.client} pageTitle="Usage & Billing">
       <BillingDashboard
         client={session.client}
         currentUsage={currentUsage}
         dailyUsage={dailyUsage}
-        currentPlan={{
-          name: "Pro",
-          price: 149,
-          billingCycle: "monthly",
-          nextBillingDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString(),
-        }}
+        currentPlan={currentPlan}
       />
     </PortalShell>
   );

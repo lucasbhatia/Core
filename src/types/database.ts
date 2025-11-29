@@ -5,6 +5,8 @@ export interface Client {
   email: string;
   phone: string | null;
   notes: string | null;
+  plan_tier?: string;
+  stripe_customer_id?: string;
   created_at: string;
   updated_at: string;
 }

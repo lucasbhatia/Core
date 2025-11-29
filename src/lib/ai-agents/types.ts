@@ -368,9 +368,11 @@ export interface ChatWithAgentRequest {
   conversation_id?: string; // Existing conversation or new
   message: string;
   attachments?: {
-    type: "file" | "image" | "link";
-    url: string;
-    name: string;
+    type: string; // MIME type (e.g., "image/png", "text/plain")
+    name?: string;
+    url?: string;
+    data?: string; // Base64 encoded data for images
+    content?: string; // Text content for non-image files
   }[];
   context?: Record<string, unknown>;
 }

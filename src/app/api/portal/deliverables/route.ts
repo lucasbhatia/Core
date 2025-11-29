@@ -58,7 +58,9 @@ export async function GET(request: NextRequest) {
       query = query.eq("workflow_id", workflowId);
     }
     if (search) {
-      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+      // Sanitize search input - escape special characters
+      const sanitizedSearch = search.replace(/[%_\\]/g, '\\$&').slice(0, 100);
+      query = query.or(`name.ilike.%${sanitizedSearch}%,description.ilike.%${sanitizedSearch}%`);
     }
 
     const { data, error, count } = await query;

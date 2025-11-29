@@ -252,8 +252,8 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
       }, delay);
     };
 
-    eventSource.addEventListener("connected", (event) => {
-      console.log("SSE connected:", JSON.parse(event.data));
+    eventSource.addEventListener("connected", () => {
+      // SSE connection established
     });
 
     eventSource.addEventListener("notification", (event) => {

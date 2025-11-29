@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import PortalSidebar from "./portal-sidebar";
 import PortalHeader from "./portal-header";
 import AIChat from "./ai-chat";
+import { SidebarProvider, useSidebar } from "./sidebar-context";
+import { cn } from "@/lib/utils";
 import type { Client } from "@/types/database";
 
 interface PortalShellProps {
@@ -14,7 +16,7 @@ interface PortalShellProps {
   notificationCount?: number;
 }
 
-export default function PortalShell({
+function PortalShellContent({
   children,
   client,
   pageTitle,
@@ -22,6 +24,7 @@ export default function PortalShell({
   notificationCount = 0,
 }: PortalShellProps) {
   const [isMounted, setIsMounted] = useState(false);
+  const { isCollapsed } = useSidebar();
 
   useEffect(() => {
     setIsMounted(true);
@@ -37,7 +40,10 @@ export default function PortalShell({
       />
 
       {/* Main Content Area */}
-      <div className="pl-[260px] transition-all duration-300">
+      <div className={cn(
+        "transition-all duration-300",
+        isCollapsed ? "pl-[70px]" : "pl-[260px]"
+      )}>
         {/* Header */}
         <PortalHeader
           client={client}
@@ -52,5 +58,13 @@ export default function PortalShell({
       {/* AI Chat - only render on client */}
       {showChat && isMounted && <AIChat />}
     </div>
+  );
+}
+
+export default function PortalShell(props: PortalShellProps) {
+  return (
+    <SidebarProvider>
+      <PortalShellContent {...props} />
+    </SidebarProvider>
   );
 }

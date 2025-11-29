@@ -285,7 +285,7 @@ export default function ActivityPage({ runs, activities }: ActivityPageProps) {
           `"${item.title}"`,
           `"${item.description}"`,
           item.timestamp,
-          item.duration || "",
+          "duration" in item ? (item.duration || "") : "",
         ].join(",")
       ),
     ].join("\n");
@@ -552,7 +552,7 @@ export default function ActivityPage({ runs, activities }: ActivityPageProps) {
                         {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}
                       </span>
                       <span>{format(new Date(item.timestamp), "MMM d, h:mm a")}</span>
-                      {item.duration && (
+                      {"duration" in item && item.duration && (
                         <span className="flex items-center gap-1">
                           <Timer className="w-3 h-3" />
                           {item.duration < 1000

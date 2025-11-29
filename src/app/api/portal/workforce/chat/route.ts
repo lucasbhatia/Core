@@ -73,9 +73,18 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     const cookieStore = await cookies();
-    const clientId = cookieStore.get("portal_client_id")?.value || "demo";
+    const clientId = cookieStore.get("portal_client_id")?.value;
 
-    const body = await request.json();
+    if (!clientId) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
 
     // Support both old format (hired_agent_id, message) and new format (agentId, userMessage, systemPrompt)
     const hired_agent_id = body.hired_agent_id;

@@ -88,10 +88,13 @@ export async function POST(request: NextRequest) {
       const emailTypeMap: Record<NotificationType, keyof typeof preferences> = {
         automation_success: "email_automation_success",
         automation_failed: "email_automation_failed",
+        automation_created: "email_automation_success",
+        agent_task_complete: "email_automation_success",
+        ai_action_complete: "email_automation_success",
         usage_warning: "email_usage_warnings",
         billing: "email_billing_alerts",
         team: "email_team_updates",
-        system: "email_automation_success", // Use automation_success as default
+        system: "email_automation_success",
       };
 
       const prefKey = emailTypeMap[type];

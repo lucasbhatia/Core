@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -31,6 +30,7 @@ import {
   Plug,
   ClipboardCheck,
 } from "lucide-react";
+import { useSidebar } from "./sidebar-context";
 
 interface SidebarItem {
   label: string;
@@ -93,7 +93,7 @@ export default function PortalSidebar({
   notificationCount = 0,
 }: PortalSidebarProps) {
   const pathname = usePathname();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isCollapsed, toggle } = useSidebar();
 
   // Update notification badge
   const groupsWithBadges = sidebarGroups.map((group) => ({
@@ -249,7 +249,7 @@ export default function PortalSidebar({
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={toggle}
           className="absolute -right-3 top-20 h-6 w-6 rounded-full border bg-white shadow-sm hover:bg-gray-100"
         >
           {isCollapsed ? (

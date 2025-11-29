@@ -25,11 +25,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const agentId = searchParams.get("agent_id");
     const status = searchParams.get("status");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const limitParam = parseInt(searchParams.get("limit") || "50");
+    const limit = Math.min(Math.max(1, limitParam || 50), 100); // Clamp between 1 and 100
 
     let query = supabase
       .from("agent_tasks")
-      .select("*")
+      .select("*", { count: "exact" })
       .eq("client_id", clientId)
       .order("created_at", { ascending: false })
       .limit(limit);
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
       query = query.eq("status", status);
     }
 
-    const { data: tasks, error } = await query;
+    const { data: tasks, error, count } = await query;
 
     if (error && error.code !== "42P01") {
       throw error;
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       tasks: tasks || [],
-      total: tasks?.length || 0,
+      total: count || 0,
     });
   } catch (error) {
     console.error("Error fetching tasks:", error);
@@ -72,7 +73,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const body: CreateTaskRequest = await request.json();
+    let body: CreateTaskRequest;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+
     const {
       hired_agent_id,
       title,
@@ -209,9 +216,8 @@ export async function POST(request: NextRequest) {
               last_active_at: new Date().toISOString(),
             })
             .eq("id", hired_agent_id);
-        } catch (dbError) {
+        } catch {
           // Database tables may not exist, continue with response
-          console.log("Database save skipped:", dbError);
         }
 
         return NextResponse.json({

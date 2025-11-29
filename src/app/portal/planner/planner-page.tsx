@@ -473,15 +473,15 @@ export default function PlannerPage({ clientId }: PlannerPageProps) {
                   </div>
                   <div className="space-y-0.5">
                     {dayTasks.slice(0, 2).map(task => {
-                      const color = task.project_id
-                        ? getProjectColor(task.project_id)
-                        : { bg: "bg-gray-400", text: "text-gray-700" };
+                      const projectColor = task.project_id ? getProjectColor(task.project_id) : null;
+                      const bgClass = projectColor && "light" in projectColor ? projectColor.light : "bg-gray-100";
+                      const textClass = projectColor ? projectColor.text : "text-gray-700";
                       return (
                         <div
                           key={task.id}
                           className={cn(
                             "text-xs px-1 py-0.5 rounded truncate",
-                            task.completed ? "bg-gray-100 text-gray-400 line-through" : cn(color.light, color.text)
+                            task.completed ? "bg-gray-100 text-gray-400 line-through" : cn(bgClass, textClass)
                           )}
                         >
                           {task.title}
