@@ -844,6 +844,7 @@ export default function AIInboxPage({ clientId, clientName }: AIInboxPageProps) 
                             content: message.content,
                             metadata: message.metadata,
                           }}
+                          clientId={clientId}
                           variant="compact"
                         />
                       </div>

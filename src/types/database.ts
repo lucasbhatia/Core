@@ -344,7 +344,16 @@ export interface AutomationMetrics {
 export type SubscriptionStatus = "active" | "canceled" | "past_due" | "trialing" | "paused";
 export type TeamRole = "admin" | "member" | "viewer";
 export type TeamMemberStatus = "pending" | "active" | "inactive" | "removed";
-export type NotificationType = "automation_success" | "automation_failed" | "usage_warning" | "billing" | "team" | "system";
+export type NotificationType =
+  | "automation_success"
+  | "automation_failed"
+  | "automation_created"
+  | "agent_task_complete"
+  | "ai_action_complete"
+  | "usage_warning"
+  | "billing"
+  | "team"
+  | "system";
 export type InvoiceStatus = "draft" | "open" | "pending" | "paid" | "void" | "uncollectible";
 
 export interface SubscriptionPlan {

@@ -23,10 +23,10 @@ import {
 import { AskAIModal } from "./ask-ai-modal";
 import { AssignToAgentModal } from "./assign-to-agent-modal";
 import { AutomateModal } from "./automate-modal";
+import { useAIActions } from "./use-ai-actions";
 
-// Default handlers that simulate API calls (replace with real implementations)
-const defaultAskAIHandler = async (request: AskAIRequest): Promise<AskAIResponse> => {
-  // Simulate API call
+// Fallback handlers for when no clientId is provided (demo mode)
+const fallbackAskAIHandler = async (request: AskAIRequest): Promise<AskAIResponse> => {
   await new Promise((resolve) => setTimeout(resolve, 1500));
 
   const actionResponses: Record<string, string> = {
@@ -53,15 +53,14 @@ const defaultAskAIHandler = async (request: AskAIRequest): Promise<AskAIResponse
   };
 };
 
-const defaultAssignToAgentHandler = async (request: AssignToAgentRequest): Promise<AgentAssignment> => {
-  // Simulate API call
+const fallbackAssignToAgentHandler = async (request: AssignToAgentRequest): Promise<AgentAssignment> => {
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
   return {
     id: `assignment-${Date.now()}`,
     entity: request.entity,
     agent_id: request.agent_id,
-    agent_name: "AI Agent",
+    agent_name: request.agent_name || "AI Agent",
     agent_avatar: "🤖",
     instructions: request.instructions,
     status: "queued",
@@ -70,8 +69,7 @@ const defaultAssignToAgentHandler = async (request: AssignToAgentRequest): Promi
   };
 };
 
-const defaultAutomateHandler = async (request: AutomateRequest): Promise<CreatedAutomation> => {
-  // Simulate API call
+const fallbackAutomateHandler = async (request: AutomateRequest): Promise<CreatedAutomation> => {
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
   const nextRun = new Date();
@@ -93,6 +91,7 @@ const defaultAutomateHandler = async (request: AutomateRequest): Promise<Created
 
 export function UniversalAIActionsBar({
   entity,
+  clientId,
   callbacks,
   variant = "default",
   className,
@@ -103,11 +102,27 @@ export function UniversalAIActionsBar({
   const [assignAgentOpen, setAssignAgentOpen] = useState(false);
   const [automateOpen, setAutomateOpen] = useState(false);
 
+  // Use real API handlers when clientId is provided
+  const aiActions = clientId
+    ? useAIActions({
+        clientId,
+        onSuccess: callbacks?.onSuccess,
+        onError: callbacks?.onError,
+      })
+    : null;
+
   const handleAskAI = async (request: AskAIRequest): Promise<AskAIResponse> => {
     try {
-      const result = callbacks?.onAskAI
-        ? await callbacks.onAskAI(request)
-        : await defaultAskAIHandler(request);
+      // Priority: custom callback > API handler > fallback
+      if (callbacks?.onAskAI) {
+        const result = await callbacks.onAskAI(request);
+        callbacks?.onSuccess?.("ask_ai", result);
+        return result;
+      }
+      if (aiActions) {
+        return await aiActions.askAI(request);
+      }
+      const result = await fallbackAskAIHandler(request);
       callbacks?.onSuccess?.("ask_ai", result);
       return result;
     } catch (error) {
@@ -118,9 +133,15 @@ export function UniversalAIActionsBar({
 
   const handleAssignToAgent = async (request: AssignToAgentRequest): Promise<AgentAssignment> => {
     try {
-      const result = callbacks?.onAssignToAgent
-        ? await callbacks.onAssignToAgent(request)
-        : await defaultAssignToAgentHandler(request);
+      if (callbacks?.onAssignToAgent) {
+        const result = await callbacks.onAssignToAgent(request);
+        callbacks?.onSuccess?.("assign_agent", result);
+        return result;
+      }
+      if (aiActions) {
+        return await aiActions.assignToAgent(request);
+      }
+      const result = await fallbackAssignToAgentHandler(request);
       callbacks?.onSuccess?.("assign_agent", result);
       return result;
     } catch (error) {
@@ -131,9 +152,15 @@ export function UniversalAIActionsBar({
 
   const handleAutomate = async (request: AutomateRequest): Promise<CreatedAutomation> => {
     try {
-      const result = callbacks?.onAutomate
-        ? await callbacks.onAutomate(request)
-        : await defaultAutomateHandler(request);
+      if (callbacks?.onAutomate) {
+        const result = await callbacks.onAutomate(request);
+        callbacks?.onSuccess?.("automate", result);
+        return result;
+      }
+      if (aiActions) {
+        return await aiActions.automate(request);
+      }
+      const result = await fallbackAutomateHandler(request);
       callbacks?.onSuccess?.("automate", result);
       return result;
     } catch (error) {
@@ -318,7 +345,7 @@ export function AskAIButton({
 }) {
   const [open, setOpen] = useState(false);
 
-  const handleSubmit = onSubmit || defaultAskAIHandler;
+  const handleSubmit = onSubmit || fallbackAskAIHandler;
 
   if (variant === "icon") {
     return (
@@ -378,7 +405,7 @@ export function AssignToAgentButton({
 }) {
   const [open, setOpen] = useState(false);
 
-  const handleSubmit = onSubmit || defaultAssignToAgentHandler;
+  const handleSubmit = onSubmit || fallbackAssignToAgentHandler;
 
   if (variant === "icon") {
     return (
@@ -438,7 +465,7 @@ export function AutomateButton({
 }) {
   const [open, setOpen] = useState(false);
 
-  const handleSubmit = onSubmit || defaultAutomateHandler;
+  const handleSubmit = onSubmit || fallbackAutomateHandler;
 
   if (variant === "icon") {
     return (

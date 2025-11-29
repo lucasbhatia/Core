@@ -464,6 +464,7 @@ export default function AutomationsPage({ automations, clientId }: AutomationsPa
                         errorCount: automation.error_count,
                       },
                     }}
+                    clientId={clientId}
                     variant="compact"
                   />
                 </div>
@@ -619,6 +620,7 @@ export default function AutomationsPage({ automations, clientId }: AutomationsPa
                       errorCount: selectedAutomation.error_count,
                     },
                   }}
+                  clientId={clientId}
                 />
               </div>
               <div className="flex justify-end gap-2">

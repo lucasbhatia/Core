@@ -18,3 +18,6 @@ export {
 export { AskAIModal } from "./ask-ai-modal";
 export { AssignToAgentModal } from "./assign-to-agent-modal";
 export { AutomateModal } from "./automate-modal";
+
+// Hook for direct API access
+export { useAIActions } from "./use-ai-actions";

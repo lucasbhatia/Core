@@ -14,7 +14,7 @@ export default async function DeliverablesRoute() {
 
   return (
     <PortalShell client={session.client} pageTitle="Results Library">
-      <DeliverablesPage deliverables={deliverables || []} />
+      <DeliverablesPage deliverables={deliverables || []} clientId={session.clientId} />
     </PortalShell>
   );
 }

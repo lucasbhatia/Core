@@ -59,6 +59,7 @@ interface Deliverable {
 
 interface DeliverablesPageProps {
   deliverables: Deliverable[];
+  clientId: string;
 }
 
 const categoryIcons: Record<string, React.ElementType> = {
@@ -71,7 +72,7 @@ const categoryIcons: Record<string, React.ElementType> = {
   general: FileText,
 };
 
-export default function DeliverablesPage({ deliverables }: DeliverablesPageProps) {
+export default function DeliverablesPage({ deliverables, clientId }: DeliverablesPageProps) {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -307,6 +308,7 @@ export default function DeliverablesPage({ deliverables }: DeliverablesPageProps
                           <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
                             <UniversalAIActionsBar
                               entity={deliverableEntity}
+                              clientId={clientId}
                               variant="compact"
                             />
                           </div>
@@ -356,6 +358,7 @@ export default function DeliverablesPage({ deliverables }: DeliverablesPageProps
                     content: selectedDeliverable.content,
                     status: selectedDeliverable.status,
                   }}
+                  clientId={clientId}
                   variant="compact"
                 />
               </div>
