@@ -318,6 +318,7 @@ export default function PlannerPage({ clientId }: PlannerPageProps) {
                     assignee={task.assignee_id ? getAssignee(task.assignee_id) : undefined}
                     onToggle={() => handleToggleTask(task.id)}
                     onDelete={() => handleDeleteTask(task.id)}
+                    clientId={clientId}
                   />
                 ))}
               </div>
@@ -337,6 +338,7 @@ export default function PlannerPage({ clientId }: PlannerPageProps) {
                       assignee={task.assignee_id ? getAssignee(task.assignee_id) : undefined}
                       onToggle={() => handleToggleTask(task.id)}
                       onDelete={() => handleDeleteTask(task.id)}
+                      clientId={clientId}
                     />
                   ))}
                 </div>
@@ -691,12 +693,14 @@ function TaskItem({
   assignee,
   onToggle,
   onDelete,
+  clientId,
 }: {
   task: Task;
   project?: Project;
   assignee?: TeamMember;
   onToggle: () => void;
   onDelete: () => void;
+  clientId: string;
 }) {
   const color = project
     ? PROJECT_COLORS.find(c => c.value === project.color)
@@ -776,6 +780,7 @@ function TaskItem({
       <div className="ml-6 opacity-0 group-hover:opacity-100 transition-opacity">
         <UniversalAIActionsBar
           entity={taskEntity}
+          clientId={clientId}
           variant="compact"
           showLabels={false}
         />

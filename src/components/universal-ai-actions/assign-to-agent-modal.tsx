@@ -132,6 +132,10 @@ export function AssignToAgentModal({
       const request: AssignToAgentRequest = {
         entity,
         agent_id: selectedAgent.id,
+        agent_name: selectedAgent.name,
+        agent_role: selectedAgent.role,
+        agent_department: selectedAgent.department,
+        agent_system_prompt: selectedAgent.system_prompt,
         instructions,
         priority,
         due_date: dueDate || undefined,

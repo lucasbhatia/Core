@@ -76,6 +76,10 @@ export interface AskAIResponse {
 export interface AssignToAgentRequest {
   entity: EntityContext;
   agent_id: string;
+  agent_name?: string;
+  agent_role?: string;
+  agent_department?: string;
+  agent_system_prompt?: string;
   instructions: string;
   priority?: "low" | "normal" | "high" | "urgent";
   due_date?: string;
@@ -170,6 +174,7 @@ export interface UniversalAIActionsCallbacks {
 // Component props
 export interface UniversalAIActionsBarProps {
   entity: EntityContext;
+  clientId?: string;
   callbacks?: UniversalAIActionsCallbacks;
   variant?: "default" | "compact" | "icon-only";
   className?: string;

@@ -20,6 +20,8 @@ import {
   CreditCard,
   Users,
   Info,
+  Bot,
+  Sparkles,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRealtime } from "@/hooks/use-realtime";
@@ -28,6 +30,9 @@ import type { Notification, NotificationType } from "@/types/database";
 const notificationIcons: Record<NotificationType, React.ElementType> = {
   automation_success: Zap,
   automation_failed: AlertTriangle,
+  automation_created: Zap,
+  agent_task_complete: Bot,
+  ai_action_complete: Sparkles,
   usage_warning: AlertTriangle,
   billing: CreditCard,
   team: Users,
@@ -37,6 +42,9 @@ const notificationIcons: Record<NotificationType, React.ElementType> = {
 const notificationColors: Record<NotificationType, string> = {
   automation_success: "text-green-500",
   automation_failed: "text-red-500",
+  automation_created: "text-amber-500",
+  agent_task_complete: "text-blue-500",
+  ai_action_complete: "text-violet-500",
   usage_warning: "text-yellow-500",
   billing: "text-blue-500",
   team: "text-violet-500",
