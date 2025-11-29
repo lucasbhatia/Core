@@ -35,6 +35,26 @@ import {
   RefreshCw,
   Target,
   LayoutGrid,
+  Users,
+  Brain,
+  Cpu,
+  Database,
+  Wifi,
+  Shield,
+  GitBranch,
+  Network,
+  Workflow,
+  CircleDot,
+  FileText,
+  Briefcase,
+  BarChart3,
+  Star,
+  Eye,
+  UserCircle,
+  Layers,
+  Settings,
+  ExternalLink,
+  Hash,
 } from "lucide-react";
 import { formatDistanceToNow, isToday, format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
@@ -99,6 +119,66 @@ interface AISuggestion {
   action: string;
   actionUrl: string;
   icon: "automation" | "task" | "insight" | "optimization";
+  priority?: "high" | "medium" | "low";
+  category?: string;
+}
+
+interface AIAgent {
+  id: string;
+  name: string;
+  role: string;
+  status: "active" | "idle" | "busy" | "offline";
+  tasksCompleted: number;
+  tasksInProgress: number;
+  rating: number;
+  avatar?: string;
+  lastActive?: string;
+  specialties: string[];
+}
+
+interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  status: "active" | "paused" | "completed";
+  progress: number;
+  tasksTotal: number;
+  tasksCompleted: number;
+  automationsActive: number;
+  dueDate?: string;
+  priority: "high" | "medium" | "low";
+  color: string;
+}
+
+interface AutomationActivity {
+  id: string;
+  automationName: string;
+  automationId: string;
+  action: "started" | "completed" | "failed" | "paused" | "triggered";
+  timestamp: string;
+  duration?: number;
+  outputs?: number;
+  error?: string;
+}
+
+interface SystemHealthStatus {
+  service: string;
+  status: "healthy" | "degraded" | "down";
+  latency?: number;
+  uptime?: number;
+  lastCheck: string;
+  icon: "database" | "ai" | "api" | "email" | "auth" | "queue";
+}
+
+interface AIInsight {
+  id: string;
+  type: "optimization" | "warning" | "opportunity" | "trend";
+  title: string;
+  description: string;
+  impact: "high" | "medium" | "low";
+  actionable: boolean;
+  actionUrl?: string;
+  metric?: { value: string; change: number };
 }
 
 interface DashboardHomeProps {
@@ -144,11 +224,21 @@ export default function DashboardHome({
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [loadingEvents, setLoadingEvents] = useState(true);
+  const [aiAgents, setAiAgents] = useState<AIAgent[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [automationActivity, setAutomationActivity] = useState<AutomationActivity[]>([]);
+  const [systemHealth, setSystemHealth] = useState<SystemHealthStatus[]>([]);
+  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
 
   // Fetch today's tasks and events on mount
   useEffect(() => {
     fetchTodayData();
     generateAISuggestions();
+    loadAIAgents();
+    loadProjects();
+    loadAutomationActivity();
+    loadSystemHealth();
+    loadAIInsights();
   }, []);
 
   const fetchTodayData = async () => {
@@ -260,31 +350,270 @@ export default function DashboardHome({
     },
   ];
 
+  const loadAIAgents = () => {
+    setAiAgents([
+      {
+        id: "1",
+        name: "Content Writer",
+        role: "Content Generation",
+        status: "active",
+        tasksCompleted: 142,
+        tasksInProgress: 3,
+        rating: 4.8,
+        avatar: "📝",
+        lastActive: new Date(Date.now() - 300000).toISOString(),
+        specialties: ["Blog Posts", "Social Media", "Email Copy"],
+      },
+      {
+        id: "2",
+        name: "Data Analyst",
+        role: "Analytics & Reporting",
+        status: "busy",
+        tasksCompleted: 89,
+        tasksInProgress: 2,
+        rating: 4.9,
+        avatar: "📊",
+        lastActive: new Date().toISOString(),
+        specialties: ["Reports", "Dashboards", "Insights"],
+      },
+      {
+        id: "3",
+        name: "Research Agent",
+        role: "Market Research",
+        status: "idle",
+        tasksCompleted: 56,
+        tasksInProgress: 0,
+        rating: 4.7,
+        avatar: "🔍",
+        lastActive: new Date(Date.now() - 1800000).toISOString(),
+        specialties: ["Competitor Analysis", "Trends", "Summaries"],
+      },
+      {
+        id: "4",
+        name: "Email Assistant",
+        role: "Communication",
+        status: "active",
+        tasksCompleted: 234,
+        tasksInProgress: 5,
+        rating: 4.6,
+        avatar: "✉️",
+        lastActive: new Date(Date.now() - 60000).toISOString(),
+        specialties: ["Email Responses", "Follow-ups", "Scheduling"],
+      },
+    ]);
+  };
+
+  const loadProjects = () => {
+    setProjects([
+      {
+        id: "1",
+        name: "Q4 Marketing Campaign",
+        description: "End-of-year marketing automation and content strategy",
+        status: "active",
+        progress: 68,
+        tasksTotal: 24,
+        tasksCompleted: 16,
+        automationsActive: 5,
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+        priority: "high",
+        color: "violet",
+      },
+      {
+        id: "2",
+        name: "Customer Onboarding Flow",
+        description: "Automated welcome sequences and setup guides",
+        status: "active",
+        progress: 45,
+        tasksTotal: 18,
+        tasksCompleted: 8,
+        automationsActive: 3,
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        priority: "medium",
+        color: "blue",
+      },
+      {
+        id: "3",
+        name: "Sales Pipeline Automation",
+        description: "Lead scoring and follow-up sequences",
+        status: "active",
+        progress: 82,
+        tasksTotal: 12,
+        tasksCompleted: 10,
+        automationsActive: 4,
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        priority: "high",
+        color: "green",
+      },
+    ]);
+  };
+
+  const loadAutomationActivity = () => {
+    setAutomationActivity([
+      {
+        id: "1",
+        automationName: "Weekly Newsletter Send",
+        automationId: "auto-1",
+        action: "completed",
+        timestamp: new Date(Date.now() - 1800000).toISOString(),
+        duration: 45,
+        outputs: 1250,
+      },
+      {
+        id: "2",
+        automationName: "Lead Scoring Update",
+        automationId: "auto-2",
+        action: "started",
+        timestamp: new Date(Date.now() - 300000).toISOString(),
+      },
+      {
+        id: "3",
+        automationName: "Social Media Posts",
+        automationId: "auto-3",
+        action: "completed",
+        timestamp: new Date(Date.now() - 3600000).toISOString(),
+        duration: 12,
+        outputs: 8,
+      },
+      {
+        id: "4",
+        automationName: "Data Backup",
+        automationId: "auto-4",
+        action: "failed",
+        timestamp: new Date(Date.now() - 7200000).toISOString(),
+        error: "Connection timeout",
+      },
+      {
+        id: "5",
+        automationName: "Customer Welcome Email",
+        automationId: "auto-5",
+        action: "triggered",
+        timestamp: new Date(Date.now() - 600000).toISOString(),
+      },
+    ]);
+  };
+
+  const loadSystemHealth = () => {
+    setSystemHealth([
+      {
+        service: "AI Engine",
+        status: "healthy",
+        latency: 124,
+        uptime: 99.98,
+        lastCheck: new Date().toISOString(),
+        icon: "ai",
+      },
+      {
+        service: "Database",
+        status: "healthy",
+        latency: 23,
+        uptime: 99.99,
+        lastCheck: new Date().toISOString(),
+        icon: "database",
+      },
+      {
+        service: "API Gateway",
+        status: "healthy",
+        latency: 45,
+        uptime: 99.95,
+        lastCheck: new Date().toISOString(),
+        icon: "api",
+      },
+      {
+        service: "Email Service",
+        status: "degraded",
+        latency: 890,
+        uptime: 98.5,
+        lastCheck: new Date().toISOString(),
+        icon: "email",
+      },
+    ]);
+  };
+
+  const loadAIInsights = () => {
+    setAiInsights([
+      {
+        id: "1",
+        type: "optimization",
+        title: "Automation Efficiency Opportunity",
+        description: "3 automations have overlapping schedules. Consolidating could save 2 hours of processing time weekly.",
+        impact: "high",
+        actionable: true,
+        actionUrl: "/portal/automations?optimize=true",
+        metric: { value: "2h/week", change: 15 },
+      },
+      {
+        id: "2",
+        type: "trend",
+        title: "Task Completion Rate Rising",
+        description: "Your team's task completion rate has increased 23% this month compared to last month.",
+        impact: "medium",
+        actionable: false,
+        metric: { value: "23%", change: 23 },
+      },
+      {
+        id: "3",
+        type: "opportunity",
+        title: "Underutilized AI Agent",
+        description: "Research Agent has capacity for 40% more tasks. Consider assigning research-related workflows.",
+        impact: "medium",
+        actionable: true,
+        actionUrl: "/portal/ai-workforce",
+      },
+      {
+        id: "4",
+        type: "warning",
+        title: "Email Deliverability Alert",
+        description: "Email open rates dropped 8% this week. Review subject lines and sending times.",
+        impact: "high",
+        actionable: true,
+        actionUrl: "/portal/analytics?tab=email",
+        metric: { value: "-8%", change: -8 },
+      },
+    ]);
+  };
+
   const generateAISuggestions = () => {
+    // Personalized suggestions based on user activity and usage patterns
     setAiSuggestions([
       {
         id: "1",
         title: "Optimize Lead Response Time",
-        description: "Create an automation to respond to new leads within 5 minutes",
+        description: "Based on your sales data, leads responded to within 5 minutes convert 21x higher",
         action: "Create Automation",
         actionUrl: "/portal/builder?prompt=Create%20an%20automation%20to%20auto-respond%20to%20new%20leads",
         icon: "automation",
+        priority: "high",
+        category: "Sales",
       },
       {
         id: "2",
         title: "Schedule Weekly Reports",
-        description: "Set up automated weekly performance reports sent every Monday",
+        description: "Your team checks analytics every Monday - automate this with scheduled reports",
         action: "Set Up",
         actionUrl: "/portal/builder?prompt=Create%20weekly%20performance%20report%20automation",
         icon: "task",
+        priority: "medium",
+        category: "Analytics",
       },
       {
         id: "3",
         title: "Connect Your CRM",
-        description: "Sync your CRM data to enable more powerful automations",
+        description: "Sync your CRM to unlock 12+ additional automation templates",
         action: "Connect",
         actionUrl: "/portal/integrations",
         icon: "optimization",
+        priority: "medium",
+        category: "Integrations",
+      },
+      {
+        id: "4",
+        title: "Email Follow-up Sequence",
+        description: "Your open rates suggest a 3-email sequence would improve engagement by 40%",
+        action: "Create",
+        actionUrl: "/portal/builder?prompt=Create%20email%20follow-up%20sequence",
+        icon: "insight",
+        priority: "high",
+        category: "Marketing",
       },
     ]);
   };
@@ -411,6 +740,152 @@ export default function DashboardHome({
         return "bg-gray-500";
     }
   };
+
+  const getAgentStatusColor = (status: string) => {
+    switch (status) {
+      case "active":
+        return "bg-green-500";
+      case "busy":
+        return "bg-amber-500";
+      case "idle":
+        return "bg-blue-500";
+      case "offline":
+        return "bg-gray-400";
+      default:
+        return "bg-gray-400";
+    }
+  };
+
+  const getAgentStatusBadge = (status: string) => {
+    switch (status) {
+      case "active":
+        return { bg: "bg-green-50", text: "text-green-700", border: "border-green-200" };
+      case "busy":
+        return { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" };
+      case "idle":
+        return { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" };
+      case "offline":
+        return { bg: "bg-gray-50", text: "text-gray-600", border: "border-gray-200" };
+      default:
+        return { bg: "bg-gray-50", text: "text-gray-600", border: "border-gray-200" };
+    }
+  };
+
+  const getActivityIcon = (action: string) => {
+    switch (action) {
+      case "completed":
+        return <CheckCircle className="w-4 h-4 text-green-600" />;
+      case "started":
+        return <Play className="w-4 h-4 text-blue-600" />;
+      case "failed":
+        return <AlertCircle className="w-4 h-4 text-red-600" />;
+      case "paused":
+        return <Timer className="w-4 h-4 text-amber-600" />;
+      case "triggered":
+        return <Zap className="w-4 h-4 text-violet-600" />;
+      default:
+        return <Activity className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  const getActivityColor = (action: string) => {
+    switch (action) {
+      case "completed":
+        return "bg-green-100";
+      case "started":
+        return "bg-blue-100";
+      case "failed":
+        return "bg-red-100";
+      case "paused":
+        return "bg-amber-100";
+      case "triggered":
+        return "bg-violet-100";
+      default:
+        return "bg-gray-100";
+    }
+  };
+
+  const getSystemHealthIcon = (icon: string) => {
+    switch (icon) {
+      case "ai":
+        return <Brain className="w-4 h-4" />;
+      case "database":
+        return <Database className="w-4 h-4" />;
+      case "api":
+        return <Wifi className="w-4 h-4" />;
+      case "email":
+        return <Send className="w-4 h-4" />;
+      case "auth":
+        return <Shield className="w-4 h-4" />;
+      case "queue":
+        return <Layers className="w-4 h-4" />;
+      default:
+        return <Cpu className="w-4 h-4" />;
+    }
+  };
+
+  const getHealthStatusColor = (status: string) => {
+    switch (status) {
+      case "healthy":
+        return { bg: "bg-green-100", text: "text-green-700", dot: "bg-green-500" };
+      case "degraded":
+        return { bg: "bg-amber-100", text: "text-amber-700", dot: "bg-amber-500" };
+      case "down":
+        return { bg: "bg-red-100", text: "text-red-700", dot: "bg-red-500" };
+      default:
+        return { bg: "bg-gray-100", text: "text-gray-600", dot: "bg-gray-400" };
+    }
+  };
+
+  const getInsightIcon = (type: string) => {
+    switch (type) {
+      case "optimization":
+        return <Target className="w-4 h-4 text-violet-600" />;
+      case "warning":
+        return <AlertCircle className="w-4 h-4 text-amber-600" />;
+      case "opportunity":
+        return <Lightbulb className="w-4 h-4 text-green-600" />;
+      case "trend":
+        return <TrendingUp className="w-4 h-4 text-blue-600" />;
+      default:
+        return <Brain className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  const getInsightColor = (type: string) => {
+    switch (type) {
+      case "optimization":
+        return { bg: "bg-violet-50", border: "border-violet-200", icon: "bg-violet-100" };
+      case "warning":
+        return { bg: "bg-amber-50", border: "border-amber-200", icon: "bg-amber-100" };
+      case "opportunity":
+        return { bg: "bg-green-50", border: "border-green-200", icon: "bg-green-100" };
+      case "trend":
+        return { bg: "bg-blue-50", border: "border-blue-200", icon: "bg-blue-100" };
+      default:
+        return { bg: "bg-gray-50", border: "border-gray-200", icon: "bg-gray-100" };
+    }
+  };
+
+  const getProjectColor = (color: string) => {
+    switch (color) {
+      case "violet":
+        return { bg: "bg-violet-100", text: "text-violet-700", progress: "bg-violet-500" };
+      case "blue":
+        return { bg: "bg-blue-100", text: "text-blue-700", progress: "bg-blue-500" };
+      case "green":
+        return { bg: "bg-green-100", text: "text-green-700", progress: "bg-green-500" };
+      case "amber":
+        return { bg: "bg-amber-100", text: "text-amber-700", progress: "bg-amber-500" };
+      case "red":
+        return { bg: "bg-red-100", text: "text-red-700", progress: "bg-red-500" };
+      default:
+        return { bg: "bg-gray-100", text: "text-gray-700", progress: "bg-gray-500" };
+    }
+  };
+
+  const activeAgents = aiAgents.filter((a) => a.status === "active" || a.status === "busy");
+  const totalTasksInProgress = aiAgents.reduce((sum, a) => sum + a.tasksInProgress, 0);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -726,32 +1201,284 @@ export default function DashboardHome({
               )}
             </CardContent>
           </Card>
+
+          {/* Automation Activity Feed */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Activity className="w-5 h-5 text-violet-600" />
+                Automation Activity
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/portal/automations?view=map" className="text-violet-600 hover:text-violet-700">
+                    <Network className="w-4 h-4 mr-1" />
+                    Map View
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {automationActivity.length === 0 ? (
+                <div className="text-center py-6">
+                  <Activity className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">No automation activity yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {automationActivity.slice(0, 5).map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="flex items-center gap-3 p-3 rounded-xl bg-gray-50/80 hover:bg-gray-100/80 transition-colors"
+                    >
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${getActivityColor(activity.action)}`}>
+                        {getActivityIcon(activity.action)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm truncate">{activity.automationName}</p>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs capitalize ${
+                              activity.action === "completed" ? "text-green-700 bg-green-50 border-green-200" :
+                              activity.action === "failed" ? "text-red-700 bg-red-50 border-red-200" :
+                              activity.action === "started" ? "text-blue-700 bg-blue-50 border-blue-200" :
+                              "text-violet-700 bg-violet-50 border-violet-200"
+                            }`}
+                          >
+                            {activity.action}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                          <span>{formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}</span>
+                          {activity.duration && (
+                            <>
+                              <span className="text-gray-300">•</span>
+                              <span className="flex items-center gap-1">
+                                <Timer className="w-3 h-3" />
+                                {activity.duration}s
+                              </span>
+                            </>
+                          )}
+                          {activity.outputs && (
+                            <>
+                              <span className="text-gray-300">•</span>
+                              <span>{activity.outputs} outputs</span>
+                            </>
+                          )}
+                          {activity.error && (
+                            <span className="text-red-600">{activity.error}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Projects Overview */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Briefcase className="w-5 h-5 text-amber-600" />
+                Active Projects
+              </CardTitle>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/portal/projects" className="text-violet-600 hover:text-violet-700">
+                  View all
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {projects.length === 0 ? (
+                <div className="text-center py-6">
+                  <FolderKanban className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">No active projects</p>
+                  <Button variant="outline" size="sm" className="mt-3" asChild>
+                    <Link href="/portal/projects/new">
+                      <PlusCircle className="w-4 h-4 mr-2" />
+                      Create Project
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {projects.slice(0, 3).map((project) => {
+                    const colors = getProjectColor(project.color);
+                    return (
+                      <div key={project.id} className="p-4 rounded-xl border hover:border-gray-300 transition-colors">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl ${colors.bg} flex items-center justify-center`}>
+                              <FolderKanban className={`w-5 h-5 ${colors.text}`} />
+                            </div>
+                            <div>
+                              <h4 className="font-medium">{project.name}</h4>
+                              <p className="text-xs text-muted-foreground line-clamp-1">{project.description}</p>
+                            </div>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={priorityColors[project.priority]}
+                          >
+                            {project.priority}
+                          </Badge>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">Progress</span>
+                            <span className="font-medium">{project.progress}%</span>
+                          </div>
+                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full ${colors.progress} rounded-full transition-all`}
+                              style={{ width: `${project.progress}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                            <div className="flex items-center gap-3">
+                              <span className="flex items-center gap-1">
+                                <CheckSquare className="w-3 h-3" />
+                                {project.tasksCompleted}/{project.tasksTotal} tasks
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Zap className="w-3 h-3" />
+                                {project.automationsActive} automations
+                              </span>
+                            </div>
+                            {project.dueDate && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {format(new Date(project.dueDate), "MMM d")}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Right Column */}
         <div className="space-y-6">
-          {/* AI Suggestions */}
+          {/* AI Agents Overview */}
+          <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50/50 to-cyan-50/50">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Bot className="w-5 h-5 text-blue-600" />
+                AI Workforce
+              </CardTitle>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/portal/ai-workforce" className="text-violet-600 hover:text-violet-700">
+                  Manage
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {/* Summary Stats */}
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="text-center p-2 rounded-lg bg-white/80">
+                  <p className="text-2xl font-bold text-blue-600">{activeAgents.length}</p>
+                  <p className="text-xs text-muted-foreground">Active</p>
+                </div>
+                <div className="text-center p-2 rounded-lg bg-white/80">
+                  <p className="text-2xl font-bold text-amber-600">{totalTasksInProgress}</p>
+                  <p className="text-xs text-muted-foreground">In Progress</p>
+                </div>
+                <div className="text-center p-2 rounded-lg bg-white/80">
+                  <p className="text-2xl font-bold text-green-600">
+                    {aiAgents.reduce((sum, a) => sum + a.tasksCompleted, 0)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Completed</p>
+                </div>
+              </div>
+
+              {/* Agent List */}
+              <div className="space-y-2">
+                {aiAgents.slice(0, 4).map((agent) => {
+                  const statusBadge = getAgentStatusBadge(agent.status);
+                  return (
+                    <div
+                      key={agent.id}
+                      className="flex items-center gap-3 p-2.5 rounded-lg bg-white/80 hover:bg-white transition-colors"
+                    >
+                      <div className="relative">
+                        <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center text-lg">
+                          {agent.avatar}
+                        </div>
+                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${getAgentStatusColor(agent.status)}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm truncate">{agent.name}</p>
+                          <Badge variant="outline" className={`text-[10px] ${statusBadge.bg} ${statusBadge.text} ${statusBadge.border}`}>
+                            {agent.status}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{agent.role}</p>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                        {agent.rating}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* AI Suggestions - Enhanced with categories and priority */}
           <Card className="border-0 shadow-sm bg-gradient-to-br from-violet-50/50 to-indigo-50/50">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-violet-600" />
-                AI Suggestions
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-violet-600" />
+                  AI Suggestions
+                </CardTitle>
+                <Badge variant="secondary" className="text-xs">
+                  Personalized
+                </Badge>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {aiSuggestions.map((suggestion) => (
+                {aiSuggestions.slice(0, 3).map((suggestion) => (
                   <div
                     key={suggestion.id}
-                    className="p-4 rounded-xl bg-white border border-violet-100 hover:border-violet-200 transition-colors"
+                    className={`p-4 rounded-xl bg-white border transition-colors ${
+                      suggestion.priority === "high"
+                        ? "border-violet-200 hover:border-violet-300"
+                        : "border-gray-100 hover:border-gray-200"
+                    }`}
                   >
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
                         {getSuggestionIcon(suggestion.icon)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{suggestion.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium text-sm">{suggestion.title}</p>
+                          {suggestion.priority === "high" && (
+                            <Badge className="text-[10px] bg-violet-100 text-violet-700 hover:bg-violet-100">
+                              Recommended
+                            </Badge>
+                          )}
+                        </div>
+                        {suggestion.category && (
+                          <Badge variant="outline" className="text-[10px] mb-1.5">
+                            {suggestion.category}
+                          </Badge>
+                        )}
+                        <p className="text-xs text-muted-foreground line-clamp-2">
                           {suggestion.description}
                         </p>
                         <Button size="sm" variant="link" className="h-auto p-0 mt-2 text-violet-600" asChild>
@@ -768,40 +1495,115 @@ export default function DashboardHome({
             </CardContent>
           </Card>
 
-          {/* Quick Create Actions */}
+          {/* Quick Create Actions - Enhanced */}
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <LayoutGrid className="w-5 h-5 text-blue-600" />
-                Quick Actions
+                <PlusCircle className="w-5 h-5 text-violet-600" />
+                Quick Create
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>
-                  <Link href="/portal/tasks">
-                    <PlusCircle className="w-5 h-5 text-violet-600" />
-                    <span className="text-sm">New Task</span>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-violet-200 hover:bg-violet-50/50" asChild>
+                  <Link href="/portal/tasks/new">
+                    <CheckSquare className="w-4 h-4 text-violet-600" />
+                    <span className="text-xs">New Task</span>
                   </Link>
                 </Button>
-                <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>
+                <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-green-200 hover:bg-green-50/50" asChild>
                   <Link href="/portal/builder">
-                    <Zap className="w-5 h-5 text-green-600" />
-                    <span className="text-sm">Automation</span>
+                    <Zap className="w-4 h-4 text-green-600" />
+                    <span className="text-xs">Automation</span>
                   </Link>
                 </Button>
-                <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>
-                  <Link href="/portal/projects">
-                    <FolderKanban className="w-5 h-5 text-amber-600" />
-                    <span className="text-sm">Project</span>
+                <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-amber-200 hover:bg-amber-50/50" asChild>
+                  <Link href="/portal/projects/new">
+                    <FolderKanban className="w-4 h-4 text-amber-600" />
+                    <span className="text-xs">Project</span>
                   </Link>
                 </Button>
-                <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>
+                <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-blue-200 hover:bg-blue-50/50" asChild>
+                  <Link href="/portal/ai-workforce/hire">
+                    <Bot className="w-4 h-4 text-blue-600" />
+                    <span className="text-xs">Hire Agent</span>
+                  </Link>
+                </Button>
+                <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-cyan-200 hover:bg-cyan-50/50" asChild>
+                  <Link href="/portal/templates">
+                    <Layers className="w-4 h-4 text-cyan-600" />
+                    <span className="text-xs">Template</span>
+                  </Link>
+                </Button>
+                <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-indigo-200 hover:bg-indigo-50/50" asChild>
                   <Link href="/portal/ai-inbox">
-                    <MessageSquare className="w-5 h-5 text-blue-600" />
-                    <span className="text-sm">Ask AI</span>
+                    <MessageSquare className="w-4 h-4 text-indigo-600" />
+                    <span className="text-xs">Ask AI</span>
                   </Link>
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* AI Insights */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Brain className="w-5 h-5 text-violet-600" />
+                AI Insights
+              </CardTitle>
+              <Badge variant="outline" className="text-xs text-violet-600 border-violet-200 bg-violet-50">
+                {aiInsights.filter(i => i.impact === "high").length} urgent
+              </Badge>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {aiInsights.slice(0, 3).map((insight) => {
+                  const colors = getInsightColor(insight.type);
+                  return (
+                    <div
+                      key={insight.id}
+                      className={`p-3 rounded-xl ${colors.bg} border ${colors.border} transition-colors`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`w-8 h-8 rounded-lg ${colors.icon} flex items-center justify-center flex-shrink-0`}>
+                          {getInsightIcon(insight.type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <p className="font-medium text-sm">{insight.title}</p>
+                            {insight.impact === "high" && (
+                              <CircleDot className="w-3 h-3 text-red-500" />
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {insight.description}
+                          </p>
+                          {insight.metric && (
+                            <div className="flex items-center gap-1 mt-1.5">
+                              <span className={`text-sm font-semibold ${
+                                insight.metric.change > 0 ? "text-green-600" : "text-red-600"
+                              }`}>
+                                {insight.metric.value}
+                              </span>
+                              <TrendingUp className={`w-3 h-3 ${
+                                insight.metric.change > 0 ? "text-green-600" : "text-red-600 rotate-180"
+                              }`} />
+                            </div>
+                          )}
+                          {insight.actionable && insight.actionUrl && (
+                            <Button size="sm" variant="link" className="h-auto p-0 mt-1.5 text-violet-600" asChild>
+                              <Link href={insight.actionUrl}>
+                                Take Action
+                                <ArrowRight className="w-3 h-3 ml-1" />
+                              </Link>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -835,6 +1637,63 @@ export default function DashboardHome({
               <Button variant="outline" className="w-full" asChild>
                 <Link href="/portal/analytics">View Analytics</Link>
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* System Health */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Cpu className="w-5 h-5 text-green-600" />
+                System Health
+              </CardTitle>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/portal/system-health" className="text-violet-600 hover:text-violet-700">
+                  Details
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {systemHealth.map((service) => {
+                  const statusColors = getHealthStatusColor(service.status);
+                  return (
+                    <div
+                      key={service.service}
+                      className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50/80 hover:bg-gray-100/80 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg ${statusColors.bg} flex items-center justify-center ${statusColors.text}`}>
+                          {getSystemHealthIcon(service.icon)}
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{service.service}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {service.latency}ms latency
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${statusColors.dot}`} />
+                        <span className={`text-xs capitalize ${statusColors.text}`}>
+                          {service.status}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-3 p-2 rounded-lg bg-green-50 border border-green-100">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-green-700 font-medium flex items-center gap-1">
+                    <Shield className="w-3 h-3" />
+                    Overall Status
+                  </span>
+                  <span className="text-green-700 font-semibold">
+                    {systemHealth.every(s => s.status === "healthy") ? "All Systems Operational" : "Minor Issues"}
+                  </span>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
