@@ -73,34 +73,47 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     const cookieStore = await cookies();
-    const clientId = cookieStore.get("portal_client_id")?.value;
+    const clientId = cookieStore.get("portal_client_id")?.value || "demo";
 
-    if (!clientId) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
+    const body = await request.json();
 
-    const body: ChatRequest = await request.json();
-    const { hired_agent_id, conversation_id, message } = body;
+    // Support both old format (hired_agent_id, message) and new format (agentId, userMessage, systemPrompt)
+    const hired_agent_id = body.hired_agent_id;
+    const conversation_id = body.conversation_id;
+    const message = body.message || body.userMessage;
+    const providedSystemPrompt = body.systemPrompt;
+    const providedMessages = body.messages; // Full conversation history
 
-    if (!hired_agent_id || !message) {
+    if (!message) {
       return NextResponse.json(
-        { error: "Agent ID and message are required" },
+        { error: "Message is required" },
         { status: 400 }
       );
     }
 
-    // Get the hired agent
-    const { data: hiredAgent } = await supabase
-      .from("hired_agents")
-      .select("*")
-      .eq("id", hired_agent_id)
-      .eq("client_id", clientId)
-      .single();
+    // Get roster agent for system prompt - try multiple ways
+    const agentId = body.agentId || hired_agent_id;
+    let rosterAgent = agentId ? getAgentById(agentId) : null;
+    let hiredAgent = null;
 
-    // Get roster agent for system prompt
-    const rosterAgent = hiredAgent
-      ? getAgentById(hiredAgent.roster_id)
-      : getAgentById("content-writer-sarah"); // Fallback for demo
+    // Try to get hired agent from database
+    if (hired_agent_id) {
+      const { data } = await supabase
+        .from("hired_agents")
+        .select("*")
+        .eq("id", hired_agent_id)
+        .eq("client_id", clientId)
+        .single();
+      hiredAgent = data;
+      if (hiredAgent && !rosterAgent) {
+        rosterAgent = getAgentById(hiredAgent.roster_id);
+      }
+    }
+
+    // Fallback to content writer if no agent found
+    if (!rosterAgent) {
+      rosterAgent = getAgentById("content-writer-sarah");
+    }
 
     if (!rosterAgent) {
       return NextResponse.json(
@@ -157,21 +170,29 @@ export async function POST(request: NextRequest) {
     };
 
     // Build conversation history for AI
-    const aiMessages: Anthropic.MessageParam[] = [
-      // Include previous messages for context
-      ...conversationMessages.map((msg) => ({
-        role: msg.role as "user" | "assistant",
-        content: msg.content,
-      })),
-      // Add new user message
-      {
-        role: "user" as const,
-        content: message,
-      },
-    ];
+    // Use provided messages if available, otherwise use DB messages
+    const aiMessages: Anthropic.MessageParam[] = providedMessages
+      ? providedMessages
+          .filter((msg: { role: string }) => msg.role === "user" || msg.role === "assistant")
+          .map((msg: { role: string; content: string }) => ({
+            role: msg.role as "user" | "assistant",
+            content: msg.content,
+          }))
+      : [
+          // Include previous messages for context
+          ...conversationMessages.map((msg) => ({
+            role: msg.role as "user" | "assistant",
+            content: msg.content,
+          })),
+          // Add new user message
+          {
+            role: "user" as const,
+            content: message,
+          },
+        ];
 
-    // Build personalized system prompt
-    const personalizedPrompt = `${rosterAgent.system_prompt}
+    // Build personalized system prompt - use provided or build from roster
+    const personalizedPrompt = providedSystemPrompt || `${rosterAgent.system_prompt}
 
 Your name is ${rosterAgent.name} and you are a ${rosterAgent.role}.
 Your communication style is ${rosterAgent.personality.communication_style}.
@@ -272,6 +293,7 @@ Remember to stay in character and be helpful, professional, and on-brand.`;
       conversation_id: currentConversationId,
       user_message: userMessage,
       assistant_message: assistantMessage,
+      content: responseText, // Direct content for simple frontend
       credits_used: creditsUsed,
       tokens_used: tokensUsed,
     });
